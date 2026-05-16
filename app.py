@@ -6,7 +6,7 @@ import os
 app = Flask(__name__)
 
 # =========================
-# 国家简介
+# Country Info
 # =========================
 def get_country_info(country):
 
@@ -16,7 +16,10 @@ def get_country_info(country):
     try:
         r = requests.get(url, headers=headers, timeout=10)
     except:
-        return {"name": country, "intro": "Information unavailable"}
+        return {
+            "name": country,
+            "intro": "Information unavailable"
+        }
 
     soup = BeautifulSoup(r.text, "html.parser")
 
@@ -27,15 +30,19 @@ def get_country_info(country):
 
     for p in soup.find_all("p"):
         text = p.get_text(" ", strip=True)
+
         if len(text) > 80:
             intro = text
             break
 
-    return {"name": name, "intro": intro}
+    return {
+        "name": name,
+        "intro": intro
+    }
 
 
 # =========================
-# 城市
+# Cities
 # =========================
 def get_cities(country):
 
@@ -52,35 +59,60 @@ def get_cities(country):
 
 
 # =========================
-# 物价
+# Cost of Living
 # =========================
 def get_cost(city):
 
     sample = {
-        "New York": [("Meal", "$20"), ("Coffee", "$5"), ("Rent", "$3000")],
-        "London": [("Meal", "£15"), ("Coffee", "£3"), ("Rent", "£2200")],
-        "Tokyo": [("Meal", "¥1000"), ("Coffee", "¥450"), ("Rent", "¥150000")],
-        "Beijing": [("Meal", "¥35"), ("Coffee", "¥25"), ("Rent", "¥6000")]
+        "New York": [
+            ("Meal", "$20"),
+            ("Coffee", "$5"),
+            ("Rent", "$3000")
+        ],
+
+        "London": [
+            ("Meal", "£15"),
+            ("Coffee", "£3"),
+            ("Rent", "£2200")
+        ],
+
+        "Tokyo": [
+            ("Meal", "¥1000"),
+            ("Coffee", "¥450"),
+            ("Rent", "¥150000")
+        ],
+
+        "Beijing": [
+            ("Meal", "¥35"),
+            ("Coffee", "¥25"),
+            ("Rent", "¥6000")
+        ]
     }
 
     if city in sample:
         return [{"item": k, "price": v} for k, v in sample[city]]
 
-    return [{"item": "Data", "price": "Not available"}]
+    return [
+        {"item": "Data", "price": "Not available"}
+    ]
 
 
 # =========================
-# 食物（独立模块）
+# Famous Food
 # =========================
 def get_foods(country):
 
     country = country.lower().strip().replace(" ", "-")
+
     url = f"https://10dishes.com/{country}/"
 
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
 
     try:
         r = requests.get(url, headers=headers, timeout=8)
+
     except:
         return ["Food data unavailable"]
 
@@ -94,6 +126,7 @@ def get_foods(country):
     foods = []
 
     for d in dishes:
+
         name = d.get_text(strip=True)
         name_low = name.lower()
 
@@ -113,22 +146,28 @@ def get_foods(country):
 
 
 # =========================
-# 页面
+# Main Page
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
 
     info = get_country_info(country)
+
     cities = get_cities(country)
+
     foods = get_foods(country)
 
     html = f"""
     <html>
+
     <head>
+
         <meta charset="utf-8">
+
         <title>{info['name']}</title>
 
         <style>
+
             body {{
                 font-family: Arial;
                 padding: 20px;
@@ -139,7 +178,7 @@ def country_page(country):
                 color: #2c3e50;
             }}
 
-            .box {{
+            .info-box {{
                 margin-top: 20px;
                 padding: 15px;
                 background: white;
@@ -154,6 +193,12 @@ def country_page(country):
                 background: white;
             }}
 
+            .section-container {{
+                margin-top: 50px;
+                padding-top: 25px;
+                border-top: 4px solid #cccccc;
+            }}
+
             .food-box {{
                 margin-top: 20px;
                 padding: 15px;
@@ -161,10 +206,13 @@ def country_page(country):
                 border-radius: 10px;
                 border-left: 5px solid #e67e22;
             }}
+
         </style>
 
         <script>
+
         function sendHeight() {{
+
             window.parent.postMessage({{
                 type: "setHeight",
                 height: document.body.scrollHeight
@@ -172,50 +220,81 @@ def country_page(country):
         }}
 
         window.onload = sendHeight;
+
         window.onresize = sendHeight;
+
         setTimeout(sendHeight, 800);
+
         </script>
 
     </head>
 
     <body>
 
-    <h1>{info['name']}</h1>
+        <h1>{info['name']}</h1>
 
-    <div class="box">
-        <h2>Introduction</h2>
-        <p>{info['intro']}</p>
-    </div>
+        <div class="info-box">
 
-    <div class="box">
-        <h2>Cities & Living Cost</h2>
+            <h2>Introduction</h2>
+
+            <p>{info['intro']}</p>
+
+        </div>
+
+        <div class="info-box">
+
+            <h2>Cities & Living Cost</h2>
     """
 
-    # 城市
+    # Cities
     for city in cities:
 
-        html += f"<div class='city'><h3>{city}</h3>"
+        html += f"""
 
-        for item in get_cost(city):
-            html += f"<p>{item['item']} : {item['price']}</p>"
+        <div class="city">
+
+            <h3>{city}</h3>
+        """
+
+        items = get_cost(city)
+
+        for item in items:
+
+            html += f"""
+            <p>{item['item']} : {item['price']}</p>
+            """
 
         html += "</div>"
 
     html += "</div>"
 
-    # 食物（独立框）
+    # =========================
+    # New Food Section
+    # =========================
     html += """
-    <div class="food-box">
-        <h2>Famous Food</h2>
+
+    <div class="section-container">
+
+        <div class="food-box">
+
+            <h2>Famous Food</h2>
+
     """
 
     for food in foods:
-        html += f"<p>{food}</p>"
+
+        html += f"""
+        <p>{food}</p>
+        """
 
     html += """
+
+        </div>
+
     </div>
 
     </body>
+
     </html>
     """
 
@@ -223,8 +302,13 @@ def country_page(country):
 
 
 # =========================
-# Run (Render)
+# Render Run
 # =========================
 if __name__ == "__main__":
+
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+
+    app.run(
+        host="0.0.0.0",
+        port=port
+    )

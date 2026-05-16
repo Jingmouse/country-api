@@ -71,33 +71,37 @@ def get_cost(city):
         "Beijing": [("Meal", "¥35"), ("Coffee", "¥25"), ("Rent", "¥6000")]
     }
 
-    if city in sample:
-        return [{"item": k, "price": v} for k, v in sample[city]]
-
-    return [{"item": "No data", "price": ""}]
+    return [{"item": k, "price": v} for k, v in sample.get(city, [("No data", "")])]
 
 
 # =========================
-# 食物爬虫（稳定版）
+# 🍜 食物爬虫（🔥修复稳定版）
 # =========================
 def get_foods(country):
 
+    # 👉 关键修复：统一格式
     country = country.lower().strip().replace(" ", "-")
 
     url = f"https://10dishes.com/{country}/"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
 
     try:
         r = requests.get(url, headers=headers, timeout=10)
     except:
         return ["Food unavailable"]
 
+    # 👉 如果网站不存在
     if r.status_code != 200:
-        return ["Food not found"]
+        return fallback_foods(country)
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    elements = soup.find_all(["h2", "h3", "li"])
+    # =========================
+    # 🔥 改进点1：扩大抓取范围
+    # =========================
+    elements = soup.select("h2, h3, li, article h2, article h3")
 
     foods = []
 
@@ -106,20 +110,50 @@ def get_foods(country):
         name = e.get_text(strip=True)
         n = name.lower()
 
-        if (
-            "menu" in n or
-            "national anthem" in n or
-            "key flavors" in n or
-            "cooking methods" in n or
-            "regional variations" in n
-        ):
+        # =========================
+        # 🔥 改进点2：更合理过滤
+        # =========================
+        if any(x in n for x in [
+            "menu",
+            "national anthem",
+            "key flavors",
+            "cooking methods",
+            "regional variations",
+            "introduction",
+            "about"
+        ]):
             continue
 
-        foods.append(name)
+        if len(name) > 2:
+            foods.append(name)
 
+    # 去重
     foods = list(dict.fromkeys(foods))
 
-    return foods[:10] if foods else ["No food data"]
+    # =========================
+    # 🔥 改进点3：防止空输出
+    # =========================
+    if not foods:
+        return fallback_foods(country)
+
+    return foods[:10]
+
+
+# =========================
+# 🍜 fallback（保证一定有数据）
+# =========================
+def fallback_foods(country):
+
+    data = {
+        "china": ["Dumplings", "Hot Pot", "Peking Duck", "Noodles"],
+        "japan": ["Sushi", "Ramen", "Tempura", "Udon"],
+        "united-states": ["Burger", "Hot Dog", "BBQ Ribs"],
+        "united-kingdom": ["Fish and Chips", "Pie", "Roast"],
+        "canada": ["Poutine", "Pancakes"],
+        "australia": ["Meat Pie", "BBQ"]
+    }
+
+    return data.get(country, ["No food data available"])
 
 
 # =========================
@@ -203,7 +237,7 @@ setTimeout(sendHeight, 500);
 
 
 # =========================
-# 食物页面（独立框）
+# 食物页面
 # =========================
 @app.route("/food/<country>")
 def food_page(country):

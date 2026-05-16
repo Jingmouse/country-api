@@ -156,15 +156,15 @@ def country_page(country):
 
     <body>
 
-    <h1>🌍 {info['name']}</h1>
+    <h1>{info['name']}</h1>
 
     <div class="box">
-        <h2>📘 Introduction</h2>
+        <h2>Introduction</h2>
         <p>{info['intro']}</p>
     </div>
 
     <div class="box">
-        <h2>🏙 Cities & Living Cost</h2>
+        <h2>Cities & Living Cost</h2>
     """
 
     for city in cities:

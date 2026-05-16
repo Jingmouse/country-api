@@ -14,7 +14,7 @@ def home():
 
 
 # =========================
-# 国家信息
+# 国家信息（保留）
 # =========================
 def get_country_info(country):
 
@@ -43,7 +43,7 @@ def get_country_info(country):
 
 
 # =========================
-# 城市
+# 城市（保留）
 # =========================
 def get_cities(country):
 
@@ -60,7 +60,7 @@ def get_cities(country):
 
 
 # =========================
-# 物价
+# 物价（保留）
 # =========================
 def get_cost(city):
 
@@ -75,45 +75,34 @@ def get_cost(city):
 
 
 # =========================
-# 🍜 食物爬虫（🔥修复稳定版）
+# 🍜 食物爬虫（最终稳定版）
 # =========================
 def get_foods(country):
 
-    # 👉 关键修复：统一格式
     country = country.lower().strip().replace(" ", "-")
 
     url = f"https://10dishes.com/{country}/"
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
+    headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
         r = requests.get(url, headers=headers, timeout=10)
     except:
         return ["Food unavailable"]
 
-    # 👉 如果网站不存在
     if r.status_code != 200:
         return fallback_foods(country)
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    # =========================
-    # 🔥 改进点1：扩大抓取范围
-    # =========================
     elements = soup.select("h2, h3, li, article h2, article h3")
 
     foods = []
 
     for e in elements:
+        text = e.get_text(strip=True)
+        t = text.lower()
 
-        name = e.get_text(strip=True)
-        n = name.lower()
-
-        # =========================
-        # 🔥 改进点2：更合理过滤
-        # =========================
-        if any(x in n for x in [
+        if any(x in t for x in [
             "menu",
             "national anthem",
             "key flavors",
@@ -124,15 +113,11 @@ def get_foods(country):
         ]):
             continue
 
-        if len(name) > 2:
-            foods.append(name)
+        if len(text) > 2:
+            foods.append(text)
 
-    # 去重
     foods = list(dict.fromkeys(foods))
 
-    # =========================
-    # 🔥 改进点3：防止空输出
-    # =========================
     if not foods:
         return fallback_foods(country)
 
@@ -140,7 +125,7 @@ def get_foods(country):
 
 
 # =========================
-# 🍜 fallback（保证一定有数据）
+# fallback（防空）
 # =========================
 def fallback_foods(country):
 
@@ -157,7 +142,7 @@ def fallback_foods(country):
 
 
 # =========================
-# 国家页面
+# 🌍 国家页面（不改）
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
@@ -237,66 +222,54 @@ setTimeout(sendHeight, 500);
 
 
 # =========================
-# 食物页面
+# 🍜 食物页面（🔥最终纯净版）
 # =========================
 @app.route("/food/<country>")
 def food_page(country):
 
     foods = get_foods(country)
 
-    html = f"""
+    html = """
 <html>
 <head>
 <meta charset="utf-8">
-<title>Food</title>
 
 <style>
-body {{
+body {
     font-family: Arial;
-    padding: 20px;
-    background: #f5f5f5;
-}}
-
-.box {{
-    background: white;
-    padding: 15px;
-    border-radius: 10px;
-}}
-
-.item {{
-    margin-top: 10px;
+    margin: 0;
     padding: 10px;
-    border-left: 4px solid #e67e22;
-    background: #fafafa;
-}}
+    background: transparent;
+}
+
+.item {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-left: 3px solid #e67e22;
+}
 </style>
 
 <script>
-function sendHeight() {{
-    window.parent.postMessage({{
+function sendHeight() {
+    window.parent.postMessage({
         type: "setHeight",
         height: document.body.scrollHeight
-    }}, "*");
-}}
+    }, "*");
+}
 
 window.onload = sendHeight;
-setTimeout(sendHeight, 500);
+setTimeout(sendHeight, 300);
 </script>
 
 </head>
 
 <body>
-
-<div class="box">
-<h3>Famous Food</h3>
 """
 
     for food in foods:
         html += f"<div class='item'>{food}</div>"
 
     html += """
-</div>
-
 </body>
 </html>
 """

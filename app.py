@@ -10,11 +10,11 @@ app = Flask(__name__)
 # =========================
 @app.route("/")
 def home():
-    return "Country Website Running"
+    return "Website Running"
 
 
 # =========================
-# 国家简介
+# 国家信息
 # =========================
 def get_country_info(country):
 
@@ -47,8 +47,6 @@ def get_country_info(country):
 # =========================
 def get_cities(country):
 
-    country = country.lower().strip()
-
     data = {
         "china": ["Beijing", "Shanghai", "Guangzhou", "Shenzhen"],
         "japan": ["Tokyo", "Osaka", "Kyoto", "Yokohama"],
@@ -58,7 +56,7 @@ def get_cities(country):
         "australia": ["Sydney", "Melbourne", "Brisbane", "Perth"]
     }
 
-    return data.get(country, [])
+    return data.get(country.lower().strip(), [])
 
 
 # =========================
@@ -76,11 +74,11 @@ def get_cost(city):
     if city in sample:
         return [{"item": k, "price": v} for k, v in sample[city]]
 
-    return [{"item": "Data", "price": "Not available"}]
+    return [{"item": "No data", "price": ""}]
 
 
 # =========================
-# ⭐ 超稳定食物爬虫（重点修复版）
+# 食物爬虫（稳定版）
 # =========================
 def get_foods(country):
 
@@ -92,14 +90,13 @@ def get_foods(country):
     try:
         r = requests.get(url, headers=headers, timeout=10)
     except:
-        return ["Food data unavailable"]
+        return ["Food unavailable"]
 
     if r.status_code != 200:
-        return ["Food page not found"]
+        return ["Food not found"]
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    # ⭐ 不只抓 h2（这是你之前失败原因）
     elements = soup.find_all(["h2", "h3", "li"])
 
     foods = []
@@ -109,7 +106,6 @@ def get_foods(country):
         name = e.get_text(strip=True)
         n = name.lower()
 
-        # 过滤无关内容
         if (
             "menu" in n or
             "national anthem" in n or
@@ -119,17 +115,15 @@ def get_foods(country):
         ):
             continue
 
-        if len(name) > 2:
-            foods.append(name)
+        foods.append(name)
 
-    # 去重 + 限制
     foods = list(dict.fromkeys(foods))
 
-    return foods[:10] if foods else ["No food data found"]
+    return foods[:10] if foods else ["No food data"]
 
 
 # =========================
-# 国家页面（主页面）
+# 国家页面
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
@@ -138,103 +132,78 @@ def country_page(country):
     cities = get_cities(country)
 
     html = f"""
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>{info['name']}</title>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{info['name']}</title>
 
-        <style>
-            body {{
-                font-family: Arial;
-                padding: 20px;
-                background: #f5f5f5;
-            }}
+<style>
+body {{
+    font-family: Arial;
+    padding: 20px;
+    background: #f5f5f5;
+}}
 
-            h1 {{
-                color: #2c3e50;
-            }}
+.box {{
+    background: white;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 10px;
+}}
 
-            .box {{
-                margin-top: 20px;
-                padding: 15px;
-                background: white;
-                border-radius: 10px;
-            }}
+.city {{
+    padding: 10px;
+    margin-top: 10px;
+    border-left: 4px solid #3498db;
+    background: white;
+}}
+</style>
 
-            .city {{
-                margin-top: 10px;
-                padding: 10px;
-                border-left: 4px solid #3498db;
-                background: white;
-            }}
+<script>
+function sendHeight() {{
+    window.parent.postMessage({{
+        type: "setHeight",
+        height: document.body.scrollHeight
+    }}, "*");
+}}
 
-            .food-box {{
-                margin-top: 20px;
-                padding: 15px;
-                background: white;
-                border-left: 4px solid #e67e22;
-                border-radius: 10px;
-            }}
-        </style>
+window.onload = sendHeight;
+setTimeout(sendHeight, 500);
+</script>
 
-        <script>
-        function sendHeight() {{
-            window.parent.postMessage({{
-                type: "setHeight",
-                height: document.body.scrollHeight
-            }}, "*");
-        }}
+</head>
 
-        window.onload = sendHeight;
-        window.onresize = sendHeight;
-        setTimeout(sendHeight, 800);
-        </script>
+<body>
 
-    </head>
+<h1>{info['name']}</h1>
 
-    <body>
+<div class="box">
+<h3>Introduction</h3>
+<p>{info['intro']}</p>
+</div>
 
-    <h1>{info['name']}</h1>
-
-    <div class="box">
-        <h2>Introduction</h2>
-        <p>{info['intro']}</p>
-    </div>
-
-    <div class="box">
-        <h2>Cities & Cost</h2>
-    """
+<div class="box">
+<h3>Cities & Cost</h3>
+"""
 
     for city in cities:
-        html += f"<div class='city'><h3>{city}</h3>"
+        html += f"<div class='city'><h4>{city}</h4>"
         for item in get_cost(city):
             html += f"<p>{item['item']} : {item['price']}</p>"
         html += "</div>"
 
-    foods = get_foods(country)
-
     html += """
-    </div>
+</div>
 
-    <div class="food-box">
-        <h2>Famous Food</h2>
-    """
-
-    for food in foods:
-        html += f"<p>{food}</p>"
-
-    html += """
-    </div>
-
-    </body>
-    </html>
-    """
+</body>
+</html>
+"""
 
     return html
 
 
 # =========================
-# 食物独立页面（第二框）
+# 食物页面（独立框）
 # =========================
 @app.route("/food/<country>")
 def food_page(country):
@@ -242,56 +211,61 @@ def food_page(country):
     foods = get_foods(country)
 
     html = f"""
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Food</title>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Food</title>
 
-        <style>
-            body {{
-                font-family: Arial;
-                padding: 20px;
-                background: #f5f5f5;
-            }}
+<style>
+body {{
+    font-family: Arial;
+    padding: 20px;
+    background: #f5f5f5;
+}}
 
-            .box {{
-                background: white;
-                padding: 20px;
-                border-radius: 10px;
-            }}
+.box {{
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+}}
 
-            .item {{
-                margin-top: 10px;
-                padding: 12px;
-                border-left: 4px solid #e67e22;
-                background: #fafafa;
-            }}
-        </style>
+.item {{
+    margin-top: 10px;
+    padding: 10px;
+    border-left: 4px solid #e67e22;
+    background: #fafafa;
+}}
+</style>
 
-        <script>
-        function sendHeight() {{
-            window.parent.postMessage({{
-                type: "setHeight",
-                height: document.body.scrollHeight
-            }}, "*");
-        }}
+<script>
+function sendHeight() {{
+    window.parent.postMessage({{
+        type: "setHeight",
+        height: document.body.scrollHeight
+    }}, "*");
+}}
 
-        window.onload = sendHeight;
-        setTimeout(sendHeight, 800);
-        </script>
+window.onload = sendHeight;
+setTimeout(sendHeight, 500);
+</script>
 
-    </head>
+</head>
 
-    <body>
+<body>
 
-    <div class="box">
-        <h2>Famous Food</h2>
-    """
+<div class="box">
+<h3>Famous Food</h3>
+"""
 
     for food in foods:
         html += f"<div class='item'>{food}</div>"
 
-    html += "</div></body></html>"
+    html += """
+</div>
+
+</body>
+</html>
+"""
 
     return html
 

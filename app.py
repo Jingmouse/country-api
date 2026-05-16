@@ -6,7 +6,7 @@ import os
 app = Flask(__name__)
 
 # =========================
-# 首页（避免404）
+# 首页
 # =========================
 @app.route("/")
 def home():
@@ -24,7 +24,7 @@ def get_country_info(country):
     try:
         r = requests.get(url, headers=headers, timeout=10)
     except:
-        return {"name": country, "intro": "Information unavailable"}
+        return {"name": country, "intro": "Unavailable"}
 
     soup = BeautifulSoup(r.text, "html.parser")
 
@@ -47,15 +47,15 @@ def get_country_info(country):
 # =========================
 def get_cities(country):
 
-    country = country.strip().lower()
+    country = country.lower().strip()
 
     data = {
-        "united states": ["New York", "Los Angeles", "Chicago", "Houston"],
-        "united kingdom": ["London", "Manchester", "Birmingham", "Liverpool"],
-        "australia": ["Sydney", "Melbourne", "Brisbane", "Perth"],
         "china": ["Beijing", "Shanghai", "Guangzhou", "Shenzhen"],
         "japan": ["Tokyo", "Osaka", "Kyoto", "Yokohama"],
-        "canada": ["Toronto", "Vancouver", "Montreal", "Calgary"]
+        "united states": ["New York", "Los Angeles", "Chicago", "Houston"],
+        "united kingdom": ["London", "Manchester", "Birmingham", "Liverpool"],
+        "canada": ["Toronto", "Vancouver", "Montreal", "Calgary"],
+        "australia": ["Sydney", "Melbourne", "Brisbane", "Perth"]
     }
 
     return data.get(country, [])
@@ -68,34 +68,9 @@ def get_cost(city):
 
     sample = {
         "New York": [("Meal", "$20"), ("Coffee", "$5"), ("Rent", "$3000")],
-        "Los Angeles": [("Meal", "$18"), ("Coffee", "$5"), ("Rent", "$2700")],
-        "Chicago": [("Meal", "$16"), ("Coffee", "$4"), ("Rent", "$2200")],
-        "Houston": [("Meal", "$15"), ("Coffee", "$4"), ("Rent", "$1800")],
-
         "London": [("Meal", "£15"), ("Coffee", "£3"), ("Rent", "£2200")],
-        "Manchester": [("Meal", "£12"), ("Coffee", "£3"), ("Rent", "£1400")],
-        "Birmingham": [("Meal", "£11"), ("Coffee", "£3"), ("Rent", "£1300")],
-        "Liverpool": [("Meal", "£10"), ("Coffee", "£2"), ("Rent", "£1100")],
-
         "Tokyo": [("Meal", "¥1000"), ("Coffee", "¥450"), ("Rent", "¥150000")],
-        "Osaka": [("Meal", "¥900"), ("Coffee", "¥400"), ("Rent", "¥120000")],
-        "Kyoto": [("Meal", "¥850"), ("Coffee", "¥400"), ("Rent", "¥100000")],
-        "Yokohama": [("Meal", "¥950"), ("Coffee", "¥430"), ("Rent", "¥130000")],
-
-        "Beijing": [("Meal", "¥35"), ("Coffee", "¥25"), ("Rent", "¥6000")],
-        "Shanghai": [("Meal", "¥40"), ("Coffee", "¥30"), ("Rent", "¥8000")],
-        "Guangzhou": [("Meal", "¥30"), ("Coffee", "¥22"), ("Rent", "¥5000")],
-        "Shenzhen": [("Meal", "¥38"), ("Coffee", "¥28"), ("Rent", "¥7500")],
-
-        "Sydney": [("Meal", "A$25"), ("Coffee", "A$5"), ("Rent", "A$2800")],
-        "Melbourne": [("Meal", "A$22"), ("Coffee", "A$5"), ("Rent", "A$2400")],
-        "Brisbane": [("Meal", "A$20"), ("Coffee", "A$4"), ("Rent", "A$2100")],
-        "Perth": [("Meal", "A$21"), ("Coffee", "A$4"), ("Rent", "A$2200")],
-
-        "Toronto": [("Meal", "C$20"), ("Coffee", "C$5"), ("Rent", "C$2500")],
-        "Vancouver": [("Meal", "C$22"), ("Coffee", "C$5"), ("Rent", "C$2700")],
-        "Montreal": [("Meal", "C$18"), ("Coffee", "C$4"), ("Rent", "C$1800")],
-        "Calgary": [("Meal", "C$17"), ("Coffee", "C$4"), ("Rent", "C$1700")]
+        "Beijing": [("Meal", "¥35"), ("Coffee", "¥25"), ("Rent", "¥6000")]
     }
 
     if city in sample:
@@ -105,33 +80,36 @@ def get_cost(city):
 
 
 # =========================
-# 食物爬虫
+# ⭐ 超稳定食物爬虫（重点修复版）
 # =========================
 def get_foods(country):
 
-    country = country.lower().strip()
+    country = country.lower().strip().replace(" ", "-")
 
     url = f"https://10dishes.com/{country}/"
     headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
-        r = requests.get(url, headers=headers, timeout=8)
+        r = requests.get(url, headers=headers, timeout=10)
     except:
         return ["Food data unavailable"]
 
     if r.status_code != 200:
-        return ["Food not found"]
+        return ["Food page not found"]
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    dishes = soup.find_all("h2")
+    # ⭐ 不只抓 h2（这是你之前失败原因）
+    elements = soup.find_all(["h2", "h3", "li"])
 
     foods = []
 
-    for d in dishes:
-        name = d.get_text(strip=True)
+    for e in elements:
+
+        name = e.get_text(strip=True)
         n = name.lower()
 
+        # 过滤无关内容
         if (
             "menu" in n or
             "national anthem" in n or
@@ -141,13 +119,17 @@ def get_foods(country):
         ):
             continue
 
-        foods.append(name)
+        if len(name) > 2:
+            foods.append(name)
 
-    return foods[:10] if foods else ["No data"]
+    # 去重 + 限制
+    foods = list(dict.fromkeys(foods))
+
+    return foods[:10] if foods else ["No food data found"]
 
 
 # =========================
-# 国家页面
+# 国家页面（主页面）
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
@@ -185,6 +167,14 @@ def country_page(country):
                 border-left: 4px solid #3498db;
                 background: white;
             }}
+
+            .food-box {{
+                margin-top: 20px;
+                padding: 15px;
+                background: white;
+                border-left: 4px solid #e67e22;
+                border-radius: 10px;
+            }}
         </style>
 
         <script>
@@ -212,7 +202,7 @@ def country_page(country):
     </div>
 
     <div class="box">
-        <h2>Cities & Living Cost</h2>
+        <h2>Cities & Cost</h2>
     """
 
     for city in cities:
@@ -221,13 +211,30 @@ def country_page(country):
             html += f"<p>{item['item']} : {item['price']}</p>"
         html += "</div>"
 
-    html += "</div></body></html>"
+    foods = get_foods(country)
+
+    html += """
+    </div>
+
+    <div class="food-box">
+        <h2>Famous Food</h2>
+    """
+
+    for food in foods:
+        html += f"<p>{food}</p>"
+
+    html += """
+    </div>
+
+    </body>
+    </html>
+    """
 
     return html
 
 
 # =========================
-# 食物独立页面（重点）
+# 食物独立页面（第二框）
 # =========================
 @app.route("/food/<country>")
 def food_page(country):

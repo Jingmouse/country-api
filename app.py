@@ -14,7 +14,7 @@ def home():
 
 
 # =========================
-# 国家信息（保留）
+# 国家信息
 # =========================
 def get_country_info(country):
 
@@ -35,15 +35,19 @@ def get_country_info(country):
 
     for p in soup.find_all("p"):
         text = p.get_text(" ", strip=True)
+
         if len(text) > 80:
             intro = text
             break
 
-    return {"name": name, "intro": intro}
+    return {
+        "name": name,
+        "intro": intro
+    }
 
 
 # =========================
-# 城市（保留）
+# 城市
 # =========================
 def get_cities(country):
 
@@ -60,32 +64,58 @@ def get_cities(country):
 
 
 # =========================
-# 物价（保留）
+# 物价
 # =========================
 def get_cost(city):
 
     sample = {
-        "New York": [("Meal", "$20"), ("Coffee", "$5"), ("Rent", "$3000")],
-        "London": [("Meal", "£15"), ("Coffee", "£3"), ("Rent", "£2200")],
-        "Tokyo": [("Meal", "¥1000"), ("Coffee", "¥450"), ("Rent", "¥150000")],
-        "Beijing": [("Meal", "¥35"), ("Coffee", "¥25"), ("Rent", "¥6000")]
+        "New York": [
+            ("Meal", "$20"),
+            ("Coffee", "$5"),
+            ("Rent", "$3000")
+        ],
+
+        "London": [
+            ("Meal", "£15"),
+            ("Coffee", "£3"),
+            ("Rent", "£2200")
+        ],
+
+        "Tokyo": [
+            ("Meal", "¥1000"),
+            ("Coffee", "¥450"),
+            ("Rent", "¥150000")
+        ],
+
+        "Beijing": [
+            ("Meal", "¥35"),
+            ("Coffee", "¥25"),
+            ("Rent", "¥6000")
+        ]
     }
 
-    return [{"item": k, "price": v} for k, v in sample.get(city, [("No data", "")])]
+    return [
+        {"item": k, "price": v}
+        for k, v in sample.get(city, [("No data", "")])
+    ]
 
 
 # =========================
-# 🍜 食物爬虫（最终稳定版）
+# 食物爬虫
 # =========================
 def get_foods(country):
 
     country = country.lower().strip().replace(" ", "-")
 
     url = f"https://10dishes.com/{country}/"
-    headers = {"User-Agent": "Mozilla/5.0"}
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
 
     try:
         r = requests.get(url, headers=headers, timeout=10)
+
     except:
         return ["Food unavailable"]
 
@@ -94,11 +124,14 @@ def get_foods(country):
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    elements = soup.select("h2, h3, li, article h2, article h3")
+    elements = soup.select(
+        "h2, h3, li, article h2, article h3"
+    )
 
     foods = []
 
     for e in elements:
+
         text = e.get_text(strip=True)
         t = text.lower()
 
@@ -125,24 +158,54 @@ def get_foods(country):
 
 
 # =========================
-# fallback（防空）
+# fallback
 # =========================
 def fallback_foods(country):
 
     data = {
-        "china": ["Dumplings", "Hot Pot", "Peking Duck", "Noodles"],
-        "japan": ["Sushi", "Ramen", "Tempura", "Udon"],
-        "united-states": ["Burger", "Hot Dog", "BBQ Ribs"],
-        "united-kingdom": ["Fish and Chips", "Pie", "Roast"],
-        "canada": ["Poutine", "Pancakes"],
-        "australia": ["Meat Pie", "BBQ"]
+
+        "china": [
+            "Dumplings",
+            "Hot Pot",
+            "Peking Duck",
+            "Noodles"
+        ],
+
+        "japan": [
+            "Sushi",
+            "Ramen",
+            "Tempura",
+            "Udon"
+        ],
+
+        "united-states": [
+            "Burger",
+            "Hot Dog",
+            "BBQ Ribs"
+        ],
+
+        "united-kingdom": [
+            "Fish and Chips",
+            "Pie",
+            "Roast"
+        ],
+
+        "canada": [
+            "Poutine",
+            "Pancakes"
+        ],
+
+        "australia": [
+            "Meat Pie",
+            "BBQ"
+        ]
     }
 
     return data.get(country, ["No food data available"])
 
 
 # =========================
-# 🌍 国家页面（不改）
+# 国家页面
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
@@ -152,11 +215,15 @@ def country_page(country):
 
     html = f"""
 <html>
+
 <head>
+
 <meta charset="utf-8">
+
 <title>{info['name']}</title>
 
 <style>
+
 body {{
     font-family: Arial;
     padding: 20px;
@@ -176,10 +243,13 @@ body {{
     border-left: 4px solid #3498db;
     background: white;
 }}
+
 </style>
 
 <script>
+
 function sendHeight() {{
+
     window.parent.postMessage({{
         type: "setHeight",
         height: document.body.scrollHeight
@@ -187,7 +257,9 @@ function sendHeight() {{
 }}
 
 window.onload = sendHeight;
+
 setTimeout(sendHeight, 500);
+
 </script>
 
 </head>
@@ -197,32 +269,43 @@ setTimeout(sendHeight, 500);
 <h1>{info['name']}</h1>
 
 <div class="box">
+
 <h3>Introduction</h3>
+
 <p>{info['intro']}</p>
+
 </div>
 
 <div class="box">
+
 <h3>Cities & Cost</h3>
+
 """
 
     for city in cities:
+
         html += f"<div class='city'><h4>{city}</h4>"
+
         for item in get_cost(city):
+
             html += f"<p>{item['item']} : {item['price']}</p>"
+
         html += "</div>"
 
     html += """
+
 </div>
 
 </body>
 </html>
+
 """
 
     return html
 
 
 # =========================
-# 🍜 食物页面（🔥最终纯净版）
+# 食物页面（最终无滚动条版）
 # =========================
 @app.route("/food/<country>")
 def food_page(country):
@@ -230,27 +313,39 @@ def food_page(country):
     foods = get_foods(country)
 
     html = """
+
 <html>
+
 <head>
+
 <meta charset="utf-8">
 
 <style>
-body {
-    font-family: Arial;
+
+html, body {
     margin: 0;
-    padding: 10px;
+    padding: 0;
+    overflow: hidden;
     background: transparent;
+    font-family: Arial;
+}
+
+body {
+    padding: 6px;
 }
 
 .item {
     padding: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     border-left: 3px solid #e67e22;
 }
+
 </style>
 
 <script>
+
 function sendHeight() {
+
     window.parent.postMessage({
         type: "setHeight",
         height: document.body.scrollHeight
@@ -258,20 +353,26 @@ function sendHeight() {
 }
 
 window.onload = sendHeight;
+
 setTimeout(sendHeight, 300);
+
 </script>
 
 </head>
 
 <body>
+
 """
 
     for food in foods:
+
         html += f"<div class='item'>{food}</div>"
 
     html += """
+
 </body>
 </html>
+
 """
 
     return html
@@ -281,5 +382,7 @@ setTimeout(sendHeight, 300);
 # Run
 # =========================
 if __name__ == "__main__":
+
     port = int(os.environ.get("PORT", 10000))
+
     app.run(host="0.0.0.0", port=port)

@@ -285,6 +285,8 @@ def get_country_info(country):
 # =====================================
 def get_major_cities(country):
 
+    country = country.strip().title()
+    
     cities_data = {
 
         "China": [

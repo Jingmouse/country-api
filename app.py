@@ -6,50 +6,25 @@ import os
 app = Flask(__name__)
 
 # =========================
-# 🌍 自动获取城市（通用版）
+# 🌍 固定城市映射（稳定方案）
 # =========================
 def get_cities(country):
 
-    url = f"https://en.wikipedia.org/wiki/{country.replace(' ', '_')}"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    data = {
+        "China": ["Beijing", "Shanghai", "Guangzhou", "Shenzhen"],
+        "Japan": ["Tokyo", "Osaka", "Kyoto", "Yokohama"],
+        "France": ["Paris", "Lyon", "Marseille", "Nice"],
+        "United States": ["New-York", "Los-Angeles", "Chicago", "Houston"],
+        "South Korea": ["Seoul", "Busan", "Incheon", "Daegu"],
+        "United Kingdom": ["London", "Manchester", "Birmingham", "Liverpool"],
+        "Germany": ["Berlin", "Munich", "Hamburg", "Frankfurt"]
+    }
 
-    try:
-        r = requests.get(url, headers=headers, timeout=10)
-    except:
-        return []
-
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    infobox = soup.find("table", class_=lambda x: x and "infobox" in x)
-
-    cities = []
-
-    if infobox:
-
-        for row in infobox.find_all("tr"):
-
-            th = row.find("th")
-            td = row.find("td")
-
-            if th and td:
-
-                key = th.text.lower()
-                value = td.get_text(" ", strip=True)
-
-                # 首都
-                if "capital" in key:
-                    cities.append(value.split(",")[0])
-
-                # 最大城市
-                if "largest city" in key:
-                    cities.append(value.split(",")[0])
-
-    # 去重
-    return list(dict.fromkeys(cities))
+    return data.get(country.title().strip(), [])
 
 
 # =========================
-# 💰 获取物价
+# 💰 物价抓取
 # =========================
 def get_cost(city):
 
@@ -80,7 +55,7 @@ def get_cost(city):
 
 
 # =========================
-# 🌍 主页面（Wix嵌入版）
+# 🌍 网页输出（Wix用）
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
@@ -115,7 +90,7 @@ def country_page(country):
             }}
         </style>
 
-        <!-- ⭐ 自动高度系统 -->
+        <!-- ⭐ 自动高度 -->
         <script>
         function sendHeight() {{
             const height = document.body.scrollHeight;
@@ -141,11 +116,8 @@ def country_page(country):
         <h2>🏙 Cities</h2>
     """
 
-    # =========================
-    # 城市 + 物价
-    # =========================
     if not cities:
-        html += "<p>No cities found</p>"
+        html += "<p>Country not supported</p>"
 
     for city in cities:
 
@@ -154,7 +126,7 @@ def country_page(country):
         items = get_cost(city)
 
         if not items:
-            html += "<p>No data available</p>"
+            html += "<p>No data</p>"
         else:
             for item in items:
                 html += f"<p>{item['item']} : {item['price']}</p>"

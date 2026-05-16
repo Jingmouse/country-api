@@ -6,6 +6,41 @@ import os
 app = Flask(__name__)
 
 # =========================
+# 📘 国家简介（Wikipedia）
+# =========================
+def get_country_info(country):
+
+    url = f"https://en.wikipedia.org/wiki/{country.replace(' ', '_')}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    try:
+        r = requests.get(url, headers=headers, timeout=10)
+    except:
+        return {
+            "name": country,
+            "intro": "Information unavailable"
+        }
+
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    title = soup.find("h1")
+    name = title.text.strip() if title else country
+
+    intro = "Not found"
+
+    for p in soup.find_all("p"):
+        text = p.get_text(" ", strip=True)
+        if len(text) > 80:
+            intro = text
+            break
+
+    return {
+        "name": name,
+        "intro": intro
+    }
+
+
+# =========================
 # 🌍 城市（稳定方案B）
 # =========================
 def get_cities(country):
@@ -25,7 +60,6 @@ def get_cities(country):
 
     cities = data.get(country.title().strip(), [])
 
-    # 🛡️ 保底：绝不为空
     if not cities:
         cities = ["Capital City"]
 
@@ -33,7 +67,7 @@ def get_cities(country):
 
 
 # =========================
-# 💰 物价（安全版）
+# 💰 物价
 # =========================
 def get_cost(city):
 
@@ -43,7 +77,7 @@ def get_cost(city):
     try:
         r = requests.get(url, headers=headers, timeout=8)
     except:
-        return [{"item": "Data unavailable", "price": "-"}]
+        return [{"item": "No data", "price": "-"}]
 
     soup = BeautifulSoup(r.text, "html.parser")
 
@@ -60,26 +94,26 @@ def get_cost(city):
                     "price": cols[1].get_text(strip=True)
                 })
 
-    # 🛡️ 保底：避免空城市
     if not items:
-        items = [{"item": "No data available", "price": "-"}]
+        items = [{"item": "Data unavailable", "price": "-"}]
 
     return items
 
 
 # =========================
-# 🌍 主页面（Wix iframe）
+# 🌍 页面（最终完整版）
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
 
+    info = get_country_info(country)
     cities = get_cities(country)
 
     html = f"""
     <html>
     <head>
         <meta charset="utf-8">
-        <title>{country}</title>
+        <title>{info['name']}</title>
 
         <style>
             body {{
@@ -92,24 +126,23 @@ def country_page(country):
                 color: #2c3e50;
             }}
 
-            .city {{
-                margin-top: 15px;
-                padding: 12px;
-                border: 1px solid #ddd;
-                border-radius: 10px;
-                background: white;
-            }}
-
             .box {{
                 margin-top: 20px;
                 padding: 15px;
+                background: white;
                 border-radius: 10px;
-                border: 1px solid #ccc;
+                border: 1px solid #ddd;
+            }}
+
+            .city {{
+                margin-top: 15px;
+                padding: 10px;
+                border-left: 4px solid #3498db;
                 background: white;
             }}
         </style>
 
-        <!-- ⭐ 自动高度系统 -->
+        <!-- ⭐ 自动高度 -->
         <script>
         function sendHeight() {{
             const height = document.body.scrollHeight;
@@ -129,14 +162,19 @@ def country_page(country):
 
     <body>
 
-    <h1>🌍 {country} Cost of Living</h1>
+    <h1>🌍 {info['name']}</h1>
 
     <div class="box">
-        <h2>🏙 Cities</h2>
+        <h2>📘 Introduction</h2>
+        <p>{info['intro']}</p>
+    </div>
+
+    <div class="box">
+        <h2>🏙 Cities + Cost of Living</h2>
     """
 
     # =========================
-    # 城市循环（保证一定有）
+    # 城市 + 物价
     # =========================
     for city in cities:
 

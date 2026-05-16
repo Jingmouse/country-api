@@ -6,62 +6,50 @@ import os
 app = Flask(__name__)
 
 # =========================
-# 国家简介（Wikipedia）
+# 🌍 自动获取城市（通用版）
 # =========================
-def get_country_info(country):
+def get_cities(country):
 
-    country = country.strip().replace(" ", "_")
-
-    url = f"https://en.wikipedia.org/wiki/{country}"
-
+    url = f"https://en.wikipedia.org/wiki/{country.replace(' ', '_')}"
     headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
         r = requests.get(url, headers=headers, timeout=10)
     except:
-        return {
-            "name": country,
-            "intro": "Request failed"
-        }
+        return []
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    title = soup.find("h1")
-    name = title.text.strip() if title else country
+    infobox = soup.find("table", class_=lambda x: x and "infobox" in x)
 
-    intro = "Not found"
+    cities = []
 
-    for p in soup.find_all("p"):
-        text = p.get_text(" ", strip=True)
-        if len(text) > 80:
-            intro = text
-            break
+    if infobox:
 
-    return {
-        "name": name,
-        "intro": intro
-    }
+        for row in infobox.find_all("tr"):
 
+            th = row.find("th")
+            td = row.find("td")
 
-# =========================
-# 城市列表
-# =========================
-def get_cities(country):
+            if th and td:
 
-    cities_map = {
-        "China": ["Beijing", "Shanghai", "Guangzhou", "Shenzhen"],
-        "Japan": ["Tokyo", "Osaka", "Kyoto", "Yokohama"],
-        "France": ["Paris", "Lyon", "Marseille", "Nice"],
-        "United States": ["New-York", "Los-Angeles", "Chicago", "Houston"],
-        "South Korea": ["Seoul", "Busan", "Incheon", "Daegu"],
-        "United Kingdom": ["London", "Manchester", "Birmingham", "Liverpool"]
-    }
+                key = th.text.lower()
+                value = td.get_text(" ", strip=True)
 
-    return cities_map.get(country.title().strip(), [])
+                # 首都
+                if "capital" in key:
+                    cities.append(value.split(",")[0])
+
+                # 最大城市
+                if "largest city" in key:
+                    cities.append(value.split(",")[0])
+
+    # 去重
+    return list(dict.fromkeys(cities))
 
 
 # =========================
-# 物价
+# 💰 获取物价
 # =========================
 def get_cost(city):
 
@@ -92,39 +80,42 @@ def get_cost(city):
 
 
 # =========================
-# 🌍 页面（最终合并版）
+# 🌍 主页面（Wix嵌入版）
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
 
-    info = get_country_info(country)
     cities = get_cities(country)
 
     html = f"""
     <html>
     <head>
         <meta charset="utf-8">
-        <title>{info['name']}</title>
+        <title>{country}</title>
 
         <style>
             body {{
                 font-family: Arial;
                 padding: 20px;
             }}
-            .box {{
-                margin-top: 20px;
-                padding: 15px;
-                border: 1px solid #ddd;
-                border-radius: 10px;
+            h1 {{
+                color: #2c3e50;
             }}
             .city {{
                 margin-top: 15px;
                 padding: 10px;
-                border-left: 4px solid #3498db;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+            }}
+            .box {{
+                margin-top: 20px;
+                padding: 15px;
+                border-radius: 10px;
+                border: 1px solid #ccc;
             }}
         </style>
 
-        <!-- ⭐ 自动高度 -->
+        <!-- ⭐ 自动高度系统 -->
         <script>
         function sendHeight() {{
             const height = document.body.scrollHeight;
@@ -144,19 +135,17 @@ def country_page(country):
 
     <body>
 
-    <h1>🌍 {info['name']}</h1>
+    <h1>🌍 {country} Cost of Living</h1>
 
     <div class="box">
-        <h2>📘 Introduction</h2>
-        <p>{info['intro']}</p>
-    </div>
-
-    <div class="box">
-        <h2>💰 Cost of Living</h2>
+        <h2>🏙 Cities</h2>
     """
 
+    # =========================
+    # 城市 + 物价
+    # =========================
     if not cities:
-        html += "<p>Country not supported</p>"
+        html += "<p>No cities found</p>"
 
     for city in cities:
 
@@ -165,7 +154,7 @@ def country_page(country):
         items = get_cost(city)
 
         if not items:
-            html += "<p>No data</p>"
+            html += "<p>No data available</p>"
         else:
             for item in items:
                 html += f"<p>{item['item']} : {item['price']}</p>"
@@ -182,7 +171,7 @@ def country_page(country):
 
 
 # =========================
-# Render启动
+# 🚀 Render启动
 # =========================
 if __name__ == "__main__":
 

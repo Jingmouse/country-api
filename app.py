@@ -139,16 +139,14 @@ if __name__ == "__main__":
 import requests
 from bs4 import BeautifulSoup
 import re
-from flask import Flask, jsonify
-from flask_cors import CORS
+from flask import Flask
 import os
 
 app = Flask(__name__)
-CORS(app)
 
-# =====================================
+# =========================
 # 国家简介
-# =====================================
+# =========================
 def get_country_info(country):
 
     country = country.strip().replace(" ", "_")
@@ -161,15 +159,8 @@ def get_country_info(country):
     }
 
     try:
-
-        response = requests.get(
-            url,
-            headers=headers,
-            timeout=10
-        )
-
-    except requests.exceptions.RequestException:
-
+        response = requests.get(url, headers=headers, timeout=10)
+    except:
         return {
             "Name": "Error",
             "Capital": "Error",
@@ -178,7 +169,6 @@ def get_country_info(country):
         }
 
     if response.status_code != 200:
-
         return {
             "Name": "Not Found",
             "Capital": "Not Found",
@@ -189,86 +179,39 @@ def get_country_info(country):
     soup = BeautifulSoup(response.text, "html.parser")
 
     title = soup.find("h1", id="firstHeading")
+    name = title.text.strip() if title else country
 
-    name = title.text.strip() if title else "Not found"
-
-    infobox = soup.find(
-        "table",
-        class_=lambda x: x and "infobox" in x
-    )
+    infobox = soup.find("table", class_=lambda x: x and "infobox" in x)
 
     capital = "Not found"
     language = "Not found"
 
     if infobox:
-
-        rows = infobox.find_all("tr")
-
-        for row in rows:
-
+        for row in infobox.find_all("tr"):
             header = row.find("th")
             data = row.find("td")
 
             if header and data:
 
-                header_text = header.text.strip().lower()
+                h = header.text.lower()
+                d = data.get_text(" ", strip=True)
 
-                data_text = data.get_text(
-                    " ",
-                    strip=True
-                )
+                d = re.sub(r"\[.*?\]", "", d)
 
-                data_text = re.sub(
-                    r"\[.*?\]",
-                    "",
-                    data_text
-                )
+                if "capital" in h and capital == "Not found":
+                    capital = re.sub(r"\d.*", "", d).strip()
 
-                if (
-                    "capital" in header_text
-                    and capital == "Not found"
-                ):
+                if "official" in h and "language" in h:
+                    language = d
 
-                    capital = re.sub(
-                        r"\d.*",
-                        "",
-                        data_text
-                    ).strip()
-
-                if (
-                    "official" in header_text
-                    and "language" in header_text
-                ):
-
-                    language = data_text
-                    break
-
-                if (
-                    "national" in header_text
-                    and "language" in header_text
-                ):
-
-                    language = data_text
-
-    paragraphs = soup.find_all("p")
+                if "national" in h and "language" in h:
+                    language = d
 
     intro = "Not found"
-
-    for p in paragraphs:
-
-        text = p.get_text(
-            " ",
-            strip=True
-        )
-
-        text = re.sub(
-            r"\[.*?\]",
-            "",
-            text
-        )
-
+    for p in soup.find_all("p"):
+        text = p.get_text(" ", strip=True)
+        text = re.sub(r"\[.*?\]", "", text)
         if len(text) > 80:
-
             intro = text
             break
 
@@ -280,188 +223,133 @@ def get_country_info(country):
     }
 
 
-# =====================================
-# 国家主要城市
-# =====================================
-def get_major_cities(country):
+# =========================
+# 物价
+# =========================
+def get_cost_of_living(country):
+
+    cities_map = {
+        "China": ["Beijing", "Shanghai", "Guangzhou", "Shenzhen"],
+        "Japan": ["Tokyo", "Osaka", "Kyoto", "Yokohama"],
+        "France": ["Paris", "Lyon", "Marseille", "Nice"],
+        "United States": ["New-York", "Los-Angeles", "Chicago", "Houston"],
+        "South Korea": ["Seoul", "Busan", "Incheon", "Daegu"],
+        "United Kingdom": ["London", "Manchester", "Birmingham", "Liverpool"]
+    }
 
     country = country.strip().title()
-    
-    cities_data = {
-
-        "China": [
-            "Beijing",
-            "Shanghai",
-            "Guangzhou",
-            "Shenzhen"
-        ],
-
-        "Japan": [
-            "Tokyo",
-            "Osaka",
-            "Kyoto",
-            "Yokohama"
-        ],
-
-        "France": [
-            "Paris",
-            "Lyon",
-            "Marseille",
-            "Nice"
-        ],
-
-        "United States": [
-            "New-York",
-            "Los-Angeles",
-            "Chicago",
-            "Houston"
-        ],
-
-        "South Korea": [
-            "Seoul",
-            "Busan",
-            "Incheon",
-            "Daegu"
-        ],
-
-        "United Kingdom": [
-            "London",
-            "Manchester",
-            "Birmingham",
-            "Liverpool"
-        ]
-    }
-
-    return cities_data.get(country, [])
-
-
-# =====================================
-# 获取城市物价
-# =====================================
-def get_cost_of_living(city):
-
-    city = city.strip().replace(" ", "-")
-
-    url = f"https://www.numbeo.com/cost-of-living/in/{city}"
-
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept-Language": "en-US,en;q=0.9"
-    }
-
-    try:
-
-        response = requests.get(
-            url,
-            headers=headers,
-            timeout=5
-        )
-
-        response.raise_for_status()
-
-    except:
-
-        return {
-            "city": city,
-            "status": "error"
-        }
-
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser"
-    )
-
-    table = soup.find(
-        "table",
-        class_="data_wide_table"
-    )
-
-    if not table:
-
-        return {
-            "city": city,
-            "status": "error"
-        }
-
-    rows = table.find_all("tr")
-
-    items = []
-
-    for row in rows[:10]:
-
-        cols = row.find_all("td")
-
-        if len(cols) >= 2:
-
-            items.append({
-                "item": cols[0].get_text(strip=True),
-                "price": cols[1].get_text(strip=True)
-            })
-
-    return {
-        "city": city,
-        "status": "success",
-        "items": items
-    }
-
-
-# =====================================
-# 首页
-# =====================================
-@app.route("/")
-def home():
-
-    return "Country API is running!"
-
-
-# =====================================
-# 国家简介 API
-# =====================================
-@app.route("/country/<country>")
-def country_api(country):
-
-    info = get_country_info(country)
-
-    return jsonify(info)
-
-
-# =====================================
-# 国家物价 API
-# =====================================
-@app.route("/country-cost/<country>")
-def country_cost(country):
-
-    cities = get_major_cities(country)
-
-    if not cities:
-
-        return jsonify({
-            "status": "error",
-            "message": "Country not supported"
-        })
+    cities = cities_map.get(country, [])
 
     results = []
 
     for city in cities:
 
-        city_data = get_cost_of_living(city)
+        url = f"https://www.numbeo.com/cost-of-living/in/{city}"
 
-        results.append(city_data)
+        headers = {"User-Agent": "Mozilla/5.0"}
 
-    return jsonify({
-        "country": country,
-        "cities": results
-    })
+        try:
+            r = requests.get(url, headers=headers, timeout=8)
+        except:
+            continue
+
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        table = soup.find("table", class_="data_wide_table")
+
+        items = []
+
+        if table:
+            for row in table.find_all("tr")[:8]:
+                cols = row.find_all("td")
+                if len(cols) >= 2:
+                    items.append({
+                        "item": cols[0].get_text(strip=True),
+                        "price": cols[1].get_text(strip=True)
+                    })
+
+        results.append({
+            "city": city,
+            "items": items
+        })
+
+    return results
 
 
-# =====================================
+# =========================
+# 🌍 核心网页（给 Wix iframe）
+# =========================
+@app.route("/country-page/<country>")
+def country_page(country):
+
+    info = get_country_info(country)
+    cities = get_cost_of_living(country)
+
+    html = f"""
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>{info['Name']}</title>
+        <style>
+            body {{
+                font-family: Arial;
+                padding: 20px;
+            }}
+            h1 {{
+                color: #2c3e50;
+            }}
+            .box {{
+                margin-top: 20px;
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+            }}
+            .city {{
+                margin-top: 15px;
+                padding: 10px;
+                border-left: 4px solid #3498db;
+            }}
+        </style>
+    </head>
+    <body>
+
+    <h1>{info['Name']}</h1>
+
+    <div class="box">
+        <h2>📘 Introduction</h2>
+        <p>{info['Introduction']}</p>
+
+        <h3>🏛 Capital: {info['Capital']}</h3>
+        <h3>🗣 Language: {info['Language']}</h3>
+    </div>
+
+    <div class="box">
+        <h2>💰 Cost of Living</h2>
+    """
+
+    for city in cities:
+
+        html += f"<div class='city'><h3>{city['city']}</h3>"
+
+        for item in city["items"]:
+            html += f"<p>{item['item']} : {item['price']}</p>"
+
+        html += "</div>"
+
+    html += """
+    </div>
+    </body>
+    </html>
+    """
+
+    return html
+
+
+# =========================
 # Render 启动
-# =====================================
+# =========================
 if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 10000))
 
-    app.run(
-        host="0.0.0.0",
-        port=port
-    )
+    app.run(host="0.0.0.0", port=port)

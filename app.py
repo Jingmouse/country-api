@@ -1,4 +1,3 @@
-这个版本对应的htmlimport requests 
 from bs4 import BeautifulSoup
 from flask import Flask
 import os

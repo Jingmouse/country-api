@@ -41,7 +41,7 @@ def get_country_info(country):
 
 
 # =========================
-# 🌍 固定国家 + 城市
+# 🌍 国家 + 城市（完全稳定）
 # =========================
 def get_cities(country):
 
@@ -58,44 +58,47 @@ def get_cities(country):
 
 
 # =========================
-# 💰 物价
+# 💰 物价（稳定数据层：替代Numbeo）
 # =========================
 def get_cost(city):
 
-    url = f"https://www.numbeo.com/cost-of-living/in/{city.replace(' ', '-')}"
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Referer": "https://www.numbeo.com/"
+    # ✔ 稳定示例数据（可后期扩展/替换为API）
+    sample = {
+        "New York": [
+            ("Meal (cheap restaurant)", "$20"),
+            ("Coffee", "$5"),
+            ("Rent (1 bedroom)", "$3000")
+        ],
+        "London": [
+            ("Meal (cheap restaurant)", "£15"),
+            ("Coffee", "£3"),
+            ("Rent (1 bedroom)", "£2200")
+        ],
+        "Tokyo": [
+            ("Meal (cheap restaurant)", "¥1000"),
+            ("Coffee", "¥450"),
+            ("Rent (1 bedroom)", "¥150000")
+        ],
+        "Beijing": [
+            ("Meal (cheap restaurant)", "¥35"),
+            ("Coffee", "¥25"),
+            ("Rent (1 bedroom)", "¥6000")
+        ]
     }
 
-    try:
-        r = requests.get(url, headers=headers, timeout=8)
-    except:
-        return [{"item": "No data", "price": "-"}]
+    if city in sample:
+        return [{"item": k, "price": v} for k, v in sample[city]]
 
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    table = soup.find("table", class_="data_wide_table")
-
-    items = []
-
-    if table:
-        for row in table.find_all("tr")[:6]:
-            cols = row.find_all("td")
-            if len(cols) >= 2:
-                items.append({
-                    "item": cols[0].get_text(strip=True),
-                    "price": cols[1].get_text(strip=True)
-                })
-
-    if not items:
-        return [{"item": "Data unavailable", "price": "-"}]
-
-    return items
+    # fallback（保证永远有内容）
+    return [
+        {"item": "Living Cost Data", "price": "Available soon"},
+        {"item": "Food", "price": "N/A"},
+        {"item": "Rent", "price": "N/A"}
+    ]
 
 
 # =========================
-# 🌍 页面（最终完整版）
+# 🌍 页面
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
@@ -113,7 +116,7 @@ def country_page(country):
             body {{
                 font-family: Arial;
                 padding: 20px;
-                background: #fafafa;
+                background: #f5f5f5;
             }}
 
             h1 {{
@@ -125,7 +128,6 @@ def country_page(country):
                 padding: 15px;
                 background: white;
                 border-radius: 10px;
-                border: 1px solid #ddd;
             }}
 
             .city {{
@@ -136,11 +138,9 @@ def country_page(country):
             }}
         </style>
 
-        <!-- ⭐ 自动高度 -->
         <script>
         function sendHeight() {{
             const height = document.body.scrollHeight;
-
             window.parent.postMessage({{
                 type: "setHeight",
                 height: height
@@ -164,12 +164,9 @@ def country_page(country):
     </div>
 
     <div class="box">
-        <h2>🏙 Cities + Cost of Living</h2>
+        <h2>🏙 Cities & Living Cost</h2>
     """
 
-    # =========================
-    # 城市 + 物价
-    # =========================
     for city in cities:
 
         html += f"<div class='city'><h3>{city}</h3>"
@@ -191,9 +188,8 @@ def country_page(country):
 
 
 # =========================
-# 🚀 Render启动
+# 🚀 Render
 # =========================
 if __name__ == "__main__":
-
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)

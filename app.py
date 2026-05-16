@@ -41,29 +41,20 @@ def get_country_info(country):
 
 
 # =========================
-# 🌍 城市（稳定方案B）
+# 🌍 固定国家 + 城市
 # =========================
 def get_cities(country):
 
     data = {
+        "United States": ["New York", "Los Angeles", "Chicago", "Houston"],
+        "United Kingdom": ["London", "Manchester", "Birmingham", "Liverpool"],
+        "Australia": ["Sydney", "Melbourne", "Brisbane", "Perth"],
         "China": ["Beijing", "Shanghai", "Guangzhou", "Shenzhen"],
         "Japan": ["Tokyo", "Osaka", "Kyoto", "Yokohama"],
-        "France": ["Paris", "Lyon", "Marseille", "Nice"],
-        "United States": ["New-York", "Los-Angeles", "Chicago", "Houston"],
-        "South Korea": ["Seoul", "Busan", "Incheon", "Daegu"],
-        "United Kingdom": ["London", "Manchester", "Birmingham", "Liverpool"],
-        "Germany": ["Berlin", "Munich", "Hamburg", "Frankfurt"],
-        "Italy": ["Rome", "Milan", "Naples", "Florence"],
-        "Spain": ["Madrid", "Barcelona", "Valencia", "Seville"],
         "Canada": ["Toronto", "Vancouver", "Montreal", "Calgary"]
     }
 
-    cities = data.get(country.title().strip(), [])
-
-    if not cities:
-        cities = ["Capital City"]
-
-    return cities
+    return data.get(country.title().strip(), [])
 
 
 # =========================
@@ -71,8 +62,11 @@ def get_cities(country):
 # =========================
 def get_cost(city):
 
-    url = f"https://www.numbeo.com/cost-of-living/in/{city}"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    url = f"https://www.numbeo.com/cost-of-living/in/{city.replace(' ', '-')}"
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://www.numbeo.com/"
+    }
 
     try:
         r = requests.get(url, headers=headers, timeout=8)
@@ -95,7 +89,7 @@ def get_cost(city):
                 })
 
     if not items:
-        items = [{"item": "Data unavailable", "price": "-"}]
+        return [{"item": "Data unavailable", "price": "-"}]
 
     return items
 

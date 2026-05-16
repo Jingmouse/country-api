@@ -6,7 +6,7 @@ import os
 app = Flask(__name__)
 
 # =========================
-# 📘 国家简介（Wikipedia）
+# 国家简介
 # =========================
 def get_country_info(country):
 
@@ -16,10 +16,7 @@ def get_country_info(country):
     try:
         r = requests.get(url, headers=headers, timeout=10)
     except:
-        return {
-            "name": country,
-            "intro": "Information unavailable"
-        }
+        return {"name": country, "intro": "Information unavailable"}
 
     soup = BeautifulSoup(r.text, "html.parser")
 
@@ -34,14 +31,11 @@ def get_country_info(country):
             intro = text
             break
 
-    return {
-        "name": name,
-        "intro": intro
-    }
+    return {"name": name, "intro": intro}
 
 
 # =========================
-# 🌍 国家 + 城市（完全稳定）
+# 城市
 # =========================
 def get_cities(country):
 
@@ -58,53 +52,75 @@ def get_cities(country):
 
 
 # =========================
-# 💰 物价（稳定数据层：替代Numbeo）
+# 物价
 # =========================
 def get_cost(city):
 
-    # ✔ 稳定示例数据（可后期扩展/替换为API）
     sample = {
-        "New York": [
-            ("Meal (cheap restaurant)", "$20"),
-            ("Coffee", "$5"),
-            ("Rent (1 bedroom)", "$3000")
-        ],
-        "London": [
-            ("Meal (cheap restaurant)", "£15"),
-            ("Coffee", "£3"),
-            ("Rent (1 bedroom)", "£2200")
-        ],
-        "Tokyo": [
-            ("Meal (cheap restaurant)", "¥1000"),
-            ("Coffee", "¥450"),
-            ("Rent (1 bedroom)", "¥150000")
-        ],
-        "Beijing": [
-            ("Meal (cheap restaurant)", "¥35"),
-            ("Coffee", "¥25"),
-            ("Rent (1 bedroom)", "¥6000")
-        ]
+        "New York": [("Meal", "$20"), ("Coffee", "$5"), ("Rent", "$3000")],
+        "London": [("Meal", "£15"), ("Coffee", "£3"), ("Rent", "£2200")],
+        "Tokyo": [("Meal", "¥1000"), ("Coffee", "¥450"), ("Rent", "¥150000")],
+        "Beijing": [("Meal", "¥35"), ("Coffee", "¥25"), ("Rent", "¥6000")]
     }
 
     if city in sample:
         return [{"item": k, "price": v} for k, v in sample[city]]
 
-    # fallback（保证永远有内容）
-    return [
-        {"item": "Living Cost Data", "price": "Available soon"},
-        {"item": "Food", "price": "N/A"},
-        {"item": "Rent", "price": "N/A"}
-    ]
+    return [{"item": "Data", "price": "Not available"}]
 
 
 # =========================
-# 🌍 页面
+# 食物（独立模块）
+# =========================
+def get_foods(country):
+
+    country = country.lower().strip().replace(" ", "-")
+    url = f"https://10dishes.com/{country}/"
+
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    try:
+        r = requests.get(url, headers=headers, timeout=8)
+    except:
+        return ["Food data unavailable"]
+
+    if r.status_code != 200:
+        return ["Food data not found"]
+
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    dishes = soup.find_all("h2")
+
+    foods = []
+
+    for d in dishes:
+        name = d.get_text(strip=True)
+        name_low = name.lower()
+
+        if (
+            "menu" in name_low or
+            "national anthem" in name_low or
+            "key flavors" in name_low or
+            "cooking methods" in name_low or
+            "regional variations" in name_low
+        ):
+            continue
+
+        if len(name) > 2:
+            foods.append(name)
+
+    return foods[:10] if foods else ["No data"]
+
+
+# =========================
+# 页面
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
 
     info = get_country_info(country)
     cities = get_cities(country)
+    foods = get_foods(country)
 
     html = f"""
     <html>
@@ -128,22 +144,30 @@ def country_page(country):
                 padding: 15px;
                 background: white;
                 border-radius: 10px;
+                border: 1px solid #ddd;
             }}
 
             .city {{
-                margin-top: 15px;
+                margin-top: 10px;
                 padding: 10px;
                 border-left: 4px solid #3498db;
                 background: white;
+            }}
+
+            .food-box {{
+                margin-top: 20px;
+                padding: 15px;
+                background: white;
+                border-radius: 10px;
+                border-left: 5px solid #e67e22;
             }}
         </style>
 
         <script>
         function sendHeight() {{
-            const height = document.body.scrollHeight;
             window.parent.postMessage({{
                 type: "setHeight",
-                height: height
+                height: document.body.scrollHeight
             }}, "*");
         }}
 
@@ -167,19 +191,30 @@ def country_page(country):
         <h2>Cities & Living Cost</h2>
     """
 
+    # 城市
     for city in cities:
 
         html += f"<div class='city'><h3>{city}</h3>"
 
-        items = get_cost(city)
-
-        for item in items:
+        for item in get_cost(city):
             html += f"<p>{item['item']} : {item['price']}</p>"
 
         html += "</div>"
 
+    html += "</div>"
+
+    # 食物（独立框）
+    html += """
+    <div class="food-box">
+        <h2>Famous Food</h2>
+    """
+
+    for food in foods:
+        html += f"<p>{food}</p>"
+
     html += """
     </div>
+
     </body>
     </html>
     """
@@ -188,7 +223,7 @@ def country_page(country):
 
 
 # =========================
-# 🚀 Render
+# Run (Render)
 # =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

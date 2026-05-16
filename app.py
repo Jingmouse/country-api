@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from flask import Flask
+import wikipedia
 import os
 
 app = Flask(__name__)
@@ -19,24 +20,34 @@ def home():
 def get_country_info(country):
 
     url = f"https://en.wikipedia.org/wiki/{country.replace(' ', '_')}"
-    headers = {"User-Agent": "Mozilla/5.0"}
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
 
     try:
         r = requests.get(url, headers=headers, timeout=10)
+
     except:
-        return {"name": country, "intro": "Unavailable"}
+        return {
+            "name": country,
+            "intro": "Unavailable"
+        }
 
     soup = BeautifulSoup(r.text, "html.parser")
 
     title = soup.find("h1")
+
     name = title.text.strip() if title else country
 
     intro = "Not found"
 
     for p in soup.find_all("p"):
+
         text = p.get_text(" ", strip=True)
 
         if len(text) > 80:
+
             intro = text
             break
 
@@ -52,12 +63,48 @@ def get_country_info(country):
 def get_cities(country):
 
     data = {
-        "china": ["Beijing", "Shanghai", "Guangzhou", "Shenzhen"],
-        "japan": ["Tokyo", "Osaka", "Kyoto", "Yokohama"],
-        "united states": ["New York", "Los Angeles", "Chicago", "Houston"],
-        "united kingdom": ["London", "Manchester", "Birmingham", "Liverpool"],
-        "canada": ["Toronto", "Vancouver", "Montreal", "Calgary"],
-        "australia": ["Sydney", "Melbourne", "Brisbane", "Perth"]
+
+        "china": [
+            "Beijing",
+            "Shanghai",
+            "Guangzhou",
+            "Shenzhen"
+        ],
+
+        "japan": [
+            "Tokyo",
+            "Osaka",
+            "Kyoto",
+            "Yokohama"
+        ],
+
+        "united states": [
+            "New York",
+            "Los Angeles",
+            "Chicago",
+            "Houston"
+        ],
+
+        "united kingdom": [
+            "London",
+            "Manchester",
+            "Birmingham",
+            "Liverpool"
+        ],
+
+        "canada": [
+            "Toronto",
+            "Vancouver",
+            "Montreal",
+            "Calgary"
+        ],
+
+        "australia": [
+            "Sydney",
+            "Melbourne",
+            "Brisbane",
+            "Perth"
+        ]
     }
 
     return data.get(country.lower().strip(), [])
@@ -69,6 +116,7 @@ def get_cities(country):
 def get_cost(city):
 
     sample = {
+
         "New York": [
             ("Meal", "$20"),
             ("Coffee", "$5"),
@@ -120,7 +168,7 @@ def get_foods(country):
         return ["Food unavailable"]
 
     if r.status_code != 200:
-        return fallback_foods(country)
+        return ["Food not found"]
 
     soup = BeautifulSoup(r.text, "html.parser")
 
@@ -133,6 +181,7 @@ def get_foods(country):
     for e in elements:
 
         text = e.get_text(strip=True)
+
         t = text.lower()
 
         if any(x in t for x in [
@@ -151,57 +200,58 @@ def get_foods(country):
 
     foods = list(dict.fromkeys(foods))
 
-    if not foods:
-        return fallback_foods(country)
-
-    return foods[:10]
+    return foods[:10] if foods else ["No food data"]
 
 
 # =========================
-# fallback
+# Climate Spider
 # =========================
-def fallback_foods(country):
+def get_climate_info(country):
 
-    data = {
+    try:
 
-        "china": [
-            "Dumplings",
-            "Hot Pot",
-            "Peking Duck",
-            "Noodles"
-        ],
+        wikipedia.set_lang("en")
 
-        "japan": [
-            "Sushi",
-            "Ramen",
-            "Tempura",
-            "Udon"
-        ],
+        page = wikipedia.page(country)
 
-        "united-states": [
-            "Burger",
-            "Hot Dog",
-            "BBQ Ribs"
-        ],
+        url = page.url
 
-        "united-kingdom": [
-            "Fish and Chips",
-            "Pie",
-            "Roast"
-        ],
+        response = requests.get(url)
 
-        "canada": [
-            "Poutine",
-            "Pancakes"
-        ],
+        soup = BeautifulSoup(response.text, "html.parser")
 
-        "australia": [
-            "Meat Pie",
-            "BBQ"
+        paragraphs = soup.find_all("p")
+
+        keywords = [
+            "climate",
+            "temperature",
+            "rainfall",
+            "weather",
+            "season",
+            "winter",
+            "summer",
+            "storm",
+            "snow"
         ]
-    }
 
-    return data.get(country, ["No food data available"])
+        climate_text = ""
+
+        for p in paragraphs:
+
+            text = p.get_text().strip()
+
+            if any(word in text.lower() for word in keywords):
+
+                climate_text += text + "\n\n"
+
+        if climate_text == "":
+            climate_text = "No climate information found."
+
+        return climate_text[:4000]
+
+    except:
+
+        return "Climate information unavailable."
 
 
 # =========================
@@ -211,16 +261,16 @@ def fallback_foods(country):
 def country_page(country):
 
     info = get_country_info(country)
+
     cities = get_cities(country)
 
     html = f"""
+
 <html>
 
 <head>
 
 <meta charset="utf-8">
-
-<title>{info['name']}</title>
 
 <style>
 
@@ -245,22 +295,6 @@ body {{
 }}
 
 </style>
-
-<script>
-
-function sendHeight() {{
-
-    window.parent.postMessage({{
-        type: "setHeight",
-        height: document.body.scrollHeight
-    }}, "*");
-}}
-
-window.onload = sendHeight;
-
-setTimeout(sendHeight, 500);
-
-</script>
 
 </head>
 
@@ -305,7 +339,7 @@ setTimeout(sendHeight, 500);
 
 
 # =========================
-# 食物页面（最终无滚动条版）
+# Food Page
 # =========================
 @app.route("/food/<country>")
 def food_page(country):
@@ -369,6 +403,79 @@ setTimeout(sendHeight, 300);
         html += f"<div class='item'>{food}</div>"
 
     html += """
+
+</body>
+</html>
+
+"""
+
+    return html
+
+
+# =========================
+# Climate Page
+# =========================
+@app.route("/climate/<country>")
+def climate_page(country):
+
+    climate = get_climate_info(country)
+
+    html = f"""
+
+<html>
+
+<head>
+
+<meta charset="utf-8">
+
+<style>
+
+html, body {{
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: transparent;
+    font-family: Arial;
+}}
+
+body {{
+    padding: 10px;
+}}
+
+.item {{
+    padding: 10px;
+    margin-bottom: 10px;
+    border-left: 3px solid #3498db;
+    line-height: 1.6;
+}}
+
+</style>
+
+<script>
+
+function sendHeight() {{
+
+    window.parent.postMessage({{
+        type: "setHeight",
+        height: document.body.scrollHeight
+    }}, "*");
+}}
+
+window.onload = sendHeight;
+
+setTimeout(sendHeight, 300);
+
+</script>
+
+</head>
+
+<body>
+
+<div class="item">
+
+{climate.replace(chr(10), "<br>")}
+
+</div>
 
 </body>
 </html>

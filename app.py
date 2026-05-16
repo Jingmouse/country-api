@@ -41,7 +41,7 @@ def get_country_info(country):
 
 
 # =========================
-# 🌍 国家 + 城市
+# 🌍 国家 + 城市（完全稳定）
 # =========================
 def get_cities(country):
 
@@ -58,33 +58,47 @@ def get_cities(country):
 
 
 # =========================
-# 💰 完整物价体系（核心升级）
+# 💰 物价（稳定数据层：替代Numbeo）
 # =========================
 def get_cost(city):
 
+    # ✔ 稳定示例数据（可后期扩展/替换为API）
+    sample = {
+        "New York": [
+            ("Meal (cheap restaurant)", "$20"),
+            ("Coffee", "$5"),
+            ("Rent (1 bedroom)", "$3000")
+        ],
+        "London": [
+            ("Meal (cheap restaurant)", "£15"),
+            ("Coffee", "£3"),
+            ("Rent (1 bedroom)", "£2200")
+        ],
+        "Tokyo": [
+            ("Meal (cheap restaurant)", "¥1000"),
+            ("Coffee", "¥450"),
+            ("Rent (1 bedroom)", "¥150000")
+        ],
+        "Beijing": [
+            ("Meal (cheap restaurant)", "¥35"),
+            ("Coffee", "¥25"),
+            ("Rent (1 bedroom)", "¥6000")
+        ]
+    }
+
+    if city in sample:
+        return [{"item": k, "price": v} for k, v in sample[city]]
+
+    # fallback（保证永远有内容）
     return [
-        {"item": "🍔 Meal at Inexpensive Restaurant", "price": "varies"},
-        {"item": "🍟 Fast Food Combo Meal", "price": "varies"},
-        {"item": "☕ Cappuccino (regular)", "price": "varies"},
-        {"item": "🥛 Milk (1L)", "price": "varies"},
-        {"item": "🍞 Bread (500g)", "price": "varies"},
-        {"item": "🍚 Rice (1kg)", "price": "varies"},
-        {"item": "🥚 Eggs (12)", "price": "varies"},
-        {"item": "🍎 Apples (1kg)", "price": "varies"},
-        {"item": "🚕 Taxi (1 km)", "price": "varies"},
-        {"item": "🚇 Public Transport Ticket", "price": "varies"},
-        {"item": "⛽ Gasoline (1L)", "price": "varies"},
-        {"item": "🏠 Rent (1 bedroom city center)", "price": "varies"},
-        {"item": "🏠 Rent (1 bedroom outside center)", "price": "varies"},
-        {"item": "💡 Utilities (monthly)", "price": "varies"},
-        {"item": "📶 Internet (monthly)", "price": "varies"},
-        {"item": "👕 Jeans (Levis or similar)", "price": "varies"},
-        {"item": "👟 Sneakers (Nike or similar)", "price": "varies"}
+        {"item": "Living Cost Data", "price": "Available soon"},
+        {"item": "Food", "price": "N/A"},
+        {"item": "Rent", "price": "N/A"}
     ]
 
 
 # =========================
-# 🌍 页面（Wix友好版）
+# 🌍 页面
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
@@ -114,18 +128,16 @@ def country_page(country):
                 padding: 15px;
                 background: white;
                 border-radius: 10px;
-                border: 1px solid #ddd;
             }}
 
             .city {{
                 margin-top: 15px;
-                padding: 12px;
+                padding: 10px;
                 border-left: 4px solid #3498db;
                 background: white;
             }}
         </style>
 
-        <!-- ⭐ Wix 自动高度 -->
         <script>
         function sendHeight() {{
             const height = document.body.scrollHeight;
@@ -152,7 +164,7 @@ def country_page(country):
     </div>
 
     <div class="box">
-        <h2>🏙 Cities & Cost of Living</h2>
+        <h2>🏙 Cities & Living Cost</h2>
     """
 
     for city in cities:
@@ -176,9 +188,8 @@ def country_page(country):
 
 
 # =========================
-# 🚀 Render启动
+# 🚀 Render
 # =========================
 if __name__ == "__main__":
-
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)

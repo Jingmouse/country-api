@@ -7,7 +7,7 @@ import re
 app = Flask(__name__)
 
 # =========================
-# 清理 Wikipedia 引用 [1]
+# 清理引用 [1]
 # =========================
 def clean_text(text):
     return re.sub(r"\[\d+\]", "", text)
@@ -42,9 +42,7 @@ def get_country_info(country):
     intro = "Not found"
 
     for p in soup.find_all("p"):
-
         text = clean_text(p.get_text(" ", strip=True))
-
         if len(text) > 80:
             intro = text
             break
@@ -53,7 +51,7 @@ def get_country_info(country):
 
 
 # =========================
-# 城市列表
+# 城市
 # =========================
 def get_cities(country):
 
@@ -70,7 +68,7 @@ def get_cities(country):
 
 
 # =========================
-# 物价（稳定本地数据）
+# 物价（稳定）
 # =========================
 def get_cost(city):
 
@@ -115,47 +113,62 @@ def get_cost(city):
 
 
 # =========================
-# FOOD（Wikidata 最稳定版本）
+# FOOD（最终稳定版 ✔）
 # =========================
 def get_foods(country):
 
-    endpoint = "https://query.wikidata.org/sparql"
-
-    query = f"""
-    SELECT ?foodLabel WHERE {{
-      ?country rdfs:label "{country}"@en.
-      ?country wdt:P527 ?food.
-      ?food rdfs:label ?foodLabel.
-      FILTER (lang(?foodLabel) = "en")
-    }}
-    LIMIT 10
-    """
-
+    url = f"https://en.wikipedia.org/wiki/{country.replace(' ', '_')}"
     headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
-        r = requests.get(
-            endpoint,
-            params={"query": query, "format": "json"},
-            headers=headers,
-            timeout=10
-        )
-
-        data = r.json()
-
-        foods = []
-
-        for item in data["results"]["bindings"]:
-            foods.append(item["foodLabel"]["value"])
-
-        return foods if foods else ["No food data"]
-
+        r = requests.get(url, headers=headers, timeout=10)
     except:
         return ["Food unavailable"]
 
+    if r.status_code != 200:
+        return ["Food page not found"]
+
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    foods = []
+
+    # ✔ 抓列表（最有效）
+    for li in soup.find_all("li"):
+
+        text = clean_text(li.get_text(" ", strip=True))
+
+        if 3 < len(text) < 60:
+
+            bad = [
+                "citation", "ISBN", "edit",
+                "archive", "retrieved",
+                "wikimedia", "portal", "help"
+            ]
+
+            if any(b in text.lower() for b in bad):
+                continue
+
+            foods.append(text)
+
+    # ✔ fallback（防止空页面）
+    if not foods:
+
+        keywords = ["dish", "food", "cuisine", "meal"]
+
+        for p in soup.find_all("p"):
+            text = clean_text(p.get_text())
+
+            if any(k in text.lower() for k in keywords):
+                if len(text) > 40:
+                    foods.append(text)
+
+    foods = list(dict.fromkeys(foods))
+
+    return foods[:12] if foods else ["No food data"]
+
 
 # =========================
-# CLIMATE（稳定版）
+# CLIMATE
 # =========================
 def get_climate_info(country):
 
@@ -178,7 +191,6 @@ def get_climate_info(country):
     result = ""
 
     for p in soup.find_all("p"):
-
         text = clean_text(p.get_text())
 
         if any(k in text.lower() for k in keywords):
@@ -260,7 +272,7 @@ body {{
 
 
 # =========================
-# FOOD IFRAME PAGE
+# FOOD iframe page
 # =========================
 @app.route("/food/<country>")
 def food_page(country):
@@ -320,7 +332,7 @@ setTimeout(sendHeight, 300);
 
 
 # =========================
-# CLIMATE IFRAME PAGE
+# CLIMATE iframe page
 # =========================
 @app.route("/climate/<country>")
 def climate_page(country):

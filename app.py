@@ -113,12 +113,11 @@ def get_cost(city):
 
 
 # =========================
-# FOOD（最终稳定版 ✔）
+# FOOD（稳定版）
 # =========================
 def get_foods(country):
 
     url = f"https://en.wikipedia.org/wiki/{country.replace(' ', '_')}"
-
     headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
@@ -131,41 +130,47 @@ def get_foods(country):
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    foods = []
-
-    # =========================
-    # ✔ 只抓正文段落（关键修复）
-    # =========================
-    content = soup.find("div", {"class": "mw-parser-output"})
+    content = soup.find("div", class_="mw-parser-output")
 
     if not content:
         return ["No food data"]
 
-    # ✔ 抓 p + ul + li 但限制在正文区域
+    foods = []
+
+    # 抓正文 p + li
     for tag in content.find_all(["p", "li"]):
 
         text = clean_text(tag.get_text(" ", strip=True))
 
-        # ❌ 过滤导航 / 垃圾内容
+        low = text.lower()
+
+        # 过滤无关内容
         bad_words = [
             "main page", "edit", "wikipedia",
-            "help", "talk", "portal", "citation",
-            "retrieved", "isbn"
+            "help", "talk", "portal",
+            "citation", "isbn", "retrieved"
         ]
 
-        if any(b in text.lower() for b in bad_words):
+        if any(b in low for b in bad_words):
             continue
 
-        # ✔ 长度过滤（避免菜单碎片）
-        if 20 < len(text) < 120:
-
+        if 15 < len(text) < 200:
             foods.append(text)
 
     # 去重
     foods = list(dict.fromkeys(foods))
 
+    # fallback
+    if not foods:
+
+        for p in content.find_all("p"):
+            text = clean_text(p.get_text())
+            if "food" in text.lower() or "cuisine" in text.lower():
+                foods.append(text)
+
     return foods[:12] if foods else ["No food data"]
-    
+
+
 # =========================
 # CLIMATE
 # =========================

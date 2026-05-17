@@ -166,39 +166,45 @@ def get_cost(city):
 # =========================
 def get_foods(country):
 
-    country = country.lower().strip().replace(" ", "-")
+    mapping = {
+        "china": "china",
+        "japan": "japan",
+        "canada": "canada",
+        "australia": "australia",
+        "united states": "united-states",
+        "united kingdom": "united-kingdom"
+    }
 
-    url = f"https://10dishes.com/{country}/"
+    key = country.lower().strip()
+
+    if key in mapping:
+        country_url = mapping[key]
+    else:
+        country_url = key.replace(" ", "-")
+
+    url = f"https://10dishes.com/{country_url}/"
 
     headers = {
         "User-Agent": "Mozilla/5.0"
     }
 
     try:
-
         r = requests.get(url, headers=headers, timeout=10)
-
     except:
-
         return ["Food unavailable"]
 
     if r.status_code != 200:
-
-        return ["Food not found"]
+        return ["Food not found on website"]
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    elements = soup.select(
-        "h2, h3, li, article h2, article h3"
-    )
+    elements = soup.select("h2, h3, li")
 
     foods = []
 
     for e in elements:
 
-        text = clean_text(
-            e.get_text(strip=True)
-        )
+        text = clean_text(e.get_text(strip=True))
 
         t = text.lower()
 
@@ -219,7 +225,6 @@ def get_foods(country):
     foods = list(dict.fromkeys(foods))
 
     return foods[:10] if foods else ["No food data"]
-
 
 # =========================
 # Climate Spider

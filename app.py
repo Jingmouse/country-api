@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 from flask import Flask
-import wikipedia
 import os
 
 app = Flask(__name__)
@@ -162,12 +161,15 @@ def get_foods(country):
     }
 
     try:
+
         r = requests.get(url, headers=headers, timeout=10)
 
     except:
+
         return ["Food unavailable"]
 
     if r.status_code != 200:
+
         return ["Food not found"]
 
     soup = BeautifulSoup(r.text, "html.parser")
@@ -208,50 +210,57 @@ def get_foods(country):
 # =========================
 def get_climate_info(country):
 
+    country_url = country.replace(" ", "_")
+
+    url = f"https://en.wikipedia.org/wiki/{country_url}"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
     try:
 
-        wikipedia.set_lang("en")
-
-        page = wikipedia.page(country)
-
-        url = page.url
-
-        response = requests.get(url)
-
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        paragraphs = soup.find_all("p")
-
-        keywords = [
-            "climate",
-            "temperature",
-            "rainfall",
-            "weather",
-            "season",
-            "winter",
-            "summer",
-            "storm",
-            "snow"
-        ]
-
-        climate_text = ""
-
-        for p in paragraphs:
-
-            text = p.get_text().strip()
-
-            if any(word in text.lower() for word in keywords):
-
-                climate_text += text + "\n\n"
-
-        if climate_text == "":
-            climate_text = "No climate information found."
-
-        return climate_text[:4000]
+        response = requests.get(url, headers=headers)
 
     except:
 
         return "Climate information unavailable."
+
+    if response.status_code != 200:
+
+        return "Climate page not found."
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    paragraphs = soup.find_all("p")
+
+    keywords = [
+        "climate",
+        "temperature",
+        "rainfall",
+        "weather",
+        "season",
+        "winter",
+        "summer",
+        "storm",
+        "snow"
+    ]
+
+    climate_text = ""
+
+    for p in paragraphs:
+
+        text = p.get_text().strip()
+
+        if any(word in text.lower() for word in keywords):
+
+            climate_text += text + "\n\n"
+
+    if climate_text == "":
+
+        climate_text = "No climate information found."
+
+    return climate_text[:4000]
 
 
 # =========================
@@ -439,12 +448,12 @@ html, body {{
 }}
 
 body {{
-    padding: 10px;
+    padding: 6px;
 }}
 
 .item {{
     padding: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     border-left: 3px solid #3498db;
     line-height: 1.6;
 }}

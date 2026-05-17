@@ -2,8 +2,20 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask
 import os
+import re
 
 app = Flask(__name__)
+
+# =========================
+# 清理 Wikipedia 引用
+# =========================
+def clean_text(text):
+
+    # 删除 [1] [22] [333]
+    text = re.sub(r"\[\d+\]", "", text)
+
+    return text
+
 
 # =========================
 # 首页
@@ -43,7 +55,9 @@ def get_country_info(country):
 
     for p in soup.find_all("p"):
 
-        text = p.get_text(" ", strip=True)
+        text = clean_text(
+            p.get_text(" ", strip=True)
+        )
 
         if len(text) > 80:
 
@@ -182,7 +196,9 @@ def get_foods(country):
 
     for e in elements:
 
-        text = e.get_text(strip=True)
+        text = clean_text(
+            e.get_text(strip=True)
+        )
 
         t = text.lower()
 
@@ -250,7 +266,9 @@ def get_climate_info(country):
 
     for p in paragraphs:
 
-        text = p.get_text().strip()
+        text = clean_text(
+            p.get_text().strip()
+        )
 
         if any(word in text.lower() for word in keywords):
 

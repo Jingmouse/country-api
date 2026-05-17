@@ -70,7 +70,7 @@ def get_cities(country):
 
 
 # =========================
-# 物价（已修复 key 不匹配问题）
+# 物价（稳定本地数据）
 # =========================
 def get_cost(city):
 
@@ -115,35 +115,43 @@ def get_cost(city):
 
 
 # =========================
-# FOOD（稳定版）
+# FOOD（Wikidata 最稳定版本）
 # =========================
 def get_foods(country):
 
-    url = f"https://en.wikipedia.org/wiki/{country.replace(' ', '_')}_(cuisine)"
+    endpoint = "https://query.wikidata.org/sparql"
+
+    query = f"""
+    SELECT ?foodLabel WHERE {{
+      ?country rdfs:label "{country}"@en.
+      ?country wdt:P527 ?food.
+      ?food rdfs:label ?foodLabel.
+      FILTER (lang(?foodLabel) = "en")
+    }}
+    LIMIT 10
+    """
+
     headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
-        r = requests.get(url, headers=headers, timeout=10)
+        r = requests.get(
+            endpoint,
+            params={"query": query, "format": "json"},
+            headers=headers,
+            timeout=10
+        )
+
+        data = r.json()
+
+        foods = []
+
+        for item in data["results"]["bindings"]:
+            foods.append(item["foodLabel"]["value"])
+
+        return foods if foods else ["No food data"]
+
     except:
         return ["Food unavailable"]
-
-    if r.status_code != 200:
-        return ["Food page not found"]
-
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    foods = []
-
-    for li in soup.find_all("li"):
-
-        text = clean_text(li.get_text(" ", strip=True))
-
-        if 2 < len(text) < 60:
-            foods.append(text)
-
-    foods = list(dict.fromkeys(foods))
-
-    return foods[:12] if foods else ["No food data"]
 
 
 # =========================
@@ -180,7 +188,7 @@ def get_climate_info(country):
 
 
 # =========================
-# 国家页面
+# COUNTRY PAGE
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
@@ -230,18 +238,13 @@ body {{
 <h3>Cities & Cost</h3>
 """
 
-    # =========================
-    # ✅ 关键修复点（循环标准化）
-    # =========================
     for city in cities:
 
         city_key = city.lower().strip()
 
         html += f"<div class='city'><h4>{city}</h4>"
 
-        costs = get_cost(city_key)
-
-        for item in costs:
+        for item in get_cost(city_key):
             html += f"<p>{item['item']} : {item['price']}</p>"
 
         html += "</div>"
@@ -257,7 +260,7 @@ body {{
 
 
 # =========================
-# FOOD iframe page
+# FOOD IFRAME PAGE
 # =========================
 @app.route("/food/<country>")
 def food_page(country):
@@ -317,7 +320,7 @@ setTimeout(sendHeight, 300);
 
 
 # =========================
-# CLIMATE iframe page
+# CLIMATE IFRAME PAGE
 # =========================
 @app.route("/climate/<country>")
 def climate_page(country):

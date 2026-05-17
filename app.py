@@ -7,7 +7,7 @@ import re
 app = Flask(__name__)
 
 # =========================
-# 清理引用
+# 清理 Wikipedia 引用 [1]
 # =========================
 def clean_text(text):
     return re.sub(r"\[\d+\]", "", text)
@@ -53,7 +53,7 @@ def get_country_info(country):
 
 
 # =========================
-# 城市
+# 城市列表
 # =========================
 def get_cities(country):
 
@@ -70,22 +70,52 @@ def get_cities(country):
 
 
 # =========================
-# 物价
+# 物价（已修复 key 不匹配问题）
 # =========================
 def get_cost(city):
 
     sample = {
-        "New York": [("Meal", "$20"), ("Coffee", "$5"), ("Rent", "$3000")],
-        "London": [("Meal", "£15"), ("Coffee", "£3"), ("Rent", "£2200")],
-        "Tokyo": [("Meal", "¥1000"), ("Coffee", "¥450"), ("Rent", "¥150000")],
-        "Beijing": [("Meal", "¥35"), ("Coffee", "¥25"), ("Rent", "¥6000")]
+        "new york": [("Meal", "$20"), ("Coffee", "$5"), ("Rent", "$3000")],
+        "los angeles": [("Meal", "$18"), ("Coffee", "$5"), ("Rent", "$2600")],
+        "chicago": [("Meal", "$16"), ("Coffee", "$4"), ("Rent", "$2100")],
+        "houston": [("Meal", "$15"), ("Coffee", "$4"), ("Rent", "$1800")],
+
+        "london": [("Meal", "£15"), ("Coffee", "£3"), ("Rent", "£2200")],
+        "manchester": [("Meal", "£12"), ("Coffee", "£3"), ("Rent", "£1400")],
+        "birmingham": [("Meal", "£11"), ("Coffee", "£3"), ("Rent", "£1300")],
+        "liverpool": [("Meal", "£10"), ("Coffee", "£2"), ("Rent", "£1200")],
+
+        "tokyo": [("Meal", "¥1000"), ("Coffee", "¥450"), ("Rent", "¥150000")],
+        "osaka": [("Meal", "¥900"), ("Coffee", "¥400"), ("Rent", "¥110000")],
+        "kyoto": [("Meal", "¥850"), ("Coffee", "¥380"), ("Rent", "¥100000")],
+        "yokohama": [("Meal", "¥950"), ("Coffee", "¥420"), ("Rent", "¥120000")],
+
+        "beijing": [("Meal", "¥35"), ("Coffee", "¥25"), ("Rent", "¥6000")],
+        "shanghai": [("Meal", "¥40"), ("Coffee", "¥30"), ("Rent", "¥7500")],
+        "guangzhou": [("Meal", "¥32"), ("Coffee", "¥24"), ("Rent", "¥5000")],
+        "shenzhen": [("Meal", "¥38"), ("Coffee", "¥28"), ("Rent", "¥7000")],
+
+        "toronto": [("Meal", "C$20"), ("Coffee", "C$5"), ("Rent", "C$2500")],
+        "vancouver": [("Meal", "C$22"), ("Coffee", "C$5"), ("Rent", "C$2800")],
+        "montreal": [("Meal", "C$18"), ("Coffee", "C$4"), ("Rent", "C$1700")],
+        "calgary": [("Meal", "C$17"), ("Coffee", "C$4"), ("Rent", "C$1600")],
+
+        "sydney": [("Meal", "A$25"), ("Coffee", "A$5"), ("Rent", "A$3200")],
+        "melbourne": [("Meal", "A$23"), ("Coffee", "A$5"), ("Rent", "A$2800")],
+        "brisbane": [("Meal", "A$21"), ("Coffee", "A$4"), ("Rent", "A$2400")],
+        "perth": [("Meal", "A$20"), ("Coffee", "A$4"), ("Rent", "A$2300")]
     }
 
-    return [{"item": k, "price": v} for k, v in sample.get(city, [("No data", "")])]
+    key = city.lower().strip()
+
+    return [
+        {"item": k, "price": v}
+        for k, v in sample.get(key, [("No data", "")])
+    ]
 
 
 # =========================
-# Food（Wikipedia Cuisine）
+# FOOD（稳定版）
 # =========================
 def get_foods(country):
 
@@ -104,62 +134,20 @@ def get_foods(country):
 
     foods = []
 
-    # =========================
-    # 1. Infobox（最干净数据）
-    # =========================
-    infobox = soup.find("table", {"class": "infobox"})
-
-    if infobox:
-        for li in infobox.find_all("li"):
-            text = clean_text(li.get_text(" ", strip=True))
-            if 2 < len(text) < 50:
-                foods.append(text)
-
-    # =========================
-    # 2. 页面列表（核心）
-    # =========================
     for li in soup.find_all("li"):
 
         text = clean_text(li.get_text(" ", strip=True))
 
-        if not text:
-            continue
-
-        # 过滤无关内容
-        bad = [
-            "ISBN",
-            "Retrieved",
-            "citation",
-            "edit",
-            "archived",
-            "listen",
-            "coordinates"
-        ]
-
-        if any(b.lower() in text.lower() for b in bad):
-            continue
-
-        # 只保留“像菜名”的
         if 2 < len(text) < 60:
+            foods.append(text)
 
-            # 排除明显不是食物的
-            if not any(x in text.lower() for x in [
-                "file",
-                "category",
-                "wikimedia",
-                "help",
-                "portal"
-            ]):
-                foods.append(text)
-
-    # =========================
-    # 3. 去重
-    # =========================
     foods = list(dict.fromkeys(foods))
 
     return foods[:12] if foods else ["No food data"]
+
+
 # =========================
-# Climate
+# CLIMATE（稳定版）
 # =========================
 def get_climate_info(country):
 
@@ -179,20 +167,20 @@ def get_climate_info(country):
         "summer", "storm", "snow"
     ]
 
-    text_all = ""
+    result = ""
 
     for p in soup.find_all("p"):
 
         text = clean_text(p.get_text())
 
         if any(k in text.lower() for k in keywords):
-            text_all += text + "\n\n"
+            result += text + "\n\n"
 
-    return text_all[:4000] if text_all else "No climate info"
+    return result[:4000] if result else "No climate info"
 
 
 # =========================
-# Country Page
+# 国家页面
 # =========================
 @app.route("/country-page/<country>")
 def country_page(country):
@@ -242,11 +230,18 @@ body {{
 <h3>Cities & Cost</h3>
 """
 
+    # =========================
+    # ✅ 关键修复点（循环标准化）
+    # =========================
     for city in cities:
+
+        city_key = city.lower().strip()
 
         html += f"<div class='city'><h4>{city}</h4>"
 
-        for item in get_cost(city):
+        costs = get_cost(city_key)
+
+        for item in costs:
             html += f"<p>{item['item']} : {item['price']}</p>"
 
         html += "</div>"
@@ -262,7 +257,7 @@ body {{
 
 
 # =========================
-# FOOD IFRAME PAGE
+# FOOD iframe page
 # =========================
 @app.route("/food/<country>")
 def food_page(country):
@@ -322,7 +317,7 @@ setTimeout(sendHeight, 300);
 
 
 # =========================
-# CLIMATE IFRAME PAGE
+# CLIMATE iframe page
 # =========================
 @app.route("/climate/<country>")
 def climate_page(country):

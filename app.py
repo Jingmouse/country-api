@@ -7,7 +7,7 @@ import re
 app = Flask(__name__)
 
 # =========================
-# 清理引用 [1]
+# 清理 [1] 引用
 # =========================
 def clean_text(text):
     return re.sub(r"\[\d+\]", "", text)
@@ -51,7 +51,7 @@ def get_country_info(country):
 
 
 # =========================
-# 城市
+# 城市（固定稳定）
 # =========================
 def get_cities(country):
 
@@ -74,105 +74,88 @@ def get_cost(city):
 
     sample = {
         "new york": [("Meal", "$20"), ("Coffee", "$5"), ("Rent", "$3000")],
-        "los angeles": [("Meal", "$18"), ("Coffee", "$5"), ("Rent", "$2600")],
-        "chicago": [("Meal", "$16"), ("Coffee", "$4"), ("Rent", "$2100")],
-        "houston": [("Meal", "$15"), ("Coffee", "$4"), ("Rent", "$1800")],
-
         "london": [("Meal", "£15"), ("Coffee", "£3"), ("Rent", "£2200")],
-        "manchester": [("Meal", "£12"), ("Coffee", "£3"), ("Rent", "£1400")],
-        "birmingham": [("Meal", "£11"), ("Coffee", "£3"), ("Rent", "£1300")],
-        "liverpool": [("Meal", "£10"), ("Coffee", "£2"), ("Rent", "£1200")],
-
         "tokyo": [("Meal", "¥1000"), ("Coffee", "¥450"), ("Rent", "¥150000")],
-        "osaka": [("Meal", "¥900"), ("Coffee", "¥400"), ("Rent", "¥110000")],
-        "kyoto": [("Meal", "¥850"), ("Coffee", "¥380"), ("Rent", "¥100000")],
-        "yokohama": [("Meal", "¥950"), ("Coffee", "¥420"), ("Rent", "¥120000")],
-
         "beijing": [("Meal", "¥35"), ("Coffee", "¥25"), ("Rent", "¥6000")],
-        "shanghai": [("Meal", "¥40"), ("Coffee", "¥30"), ("Rent", "¥7500")],
-        "guangzhou": [("Meal", "¥32"), ("Coffee", "¥24"), ("Rent", "¥5000")],
-        "shenzhen": [("Meal", "¥38"), ("Coffee", "¥28"), ("Rent", "¥7000")],
-
         "toronto": [("Meal", "C$20"), ("Coffee", "C$5"), ("Rent", "C$2500")],
-        "vancouver": [("Meal", "C$22"), ("Coffee", "C$5"), ("Rent", "C$2800")],
-        "montreal": [("Meal", "C$18"), ("Coffee", "C$4"), ("Rent", "C$1700")],
-        "calgary": [("Meal", "C$17"), ("Coffee", "C$4"), ("Rent", "C$1600")],
-
-        "sydney": [("Meal", "A$25"), ("Coffee", "A$5"), ("Rent", "A$3200")],
-        "melbourne": [("Meal", "A$23"), ("Coffee", "A$5"), ("Rent", "A$2800")],
-        "brisbane": [("Meal", "A$21"), ("Coffee", "A$4"), ("Rent", "A$2400")],
-        "perth": [("Meal", "A$20"), ("Coffee", "A$4"), ("Rent", "A$2300")]
+        "sydney": [("Meal", "A$25"), ("Coffee", "A$5"), ("Rent", "A$3200")]
     }
 
-    key = city.lower().strip()
-
-    return [
-        {"item": k, "price": v}
-        for k, v in sample.get(key, [("No data", "")])
-    ]
+    return [{"item": k, "price": v} for k, v in sample.get(city.lower(), [("No data", "")])]
 
 
 # =========================
-# FOOD（稳定版）
+# FOOD（DBpedia + fallback ✔）
 # =========================
 def get_foods(country):
 
-    url = f"https://en.wikipedia.org/wiki/{country.replace(' ', '_')}"
-    headers = {"User-Agent": "Mozilla/5.0"}
-
-    try:
-        r = requests.get(url, headers=headers, timeout=10)
-    except:
-        return ["Food unavailable"]
-
-    if r.status_code != 200:
-        return ["Food page not found"]
-
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    content = soup.find("div", class_="mw-parser-output")
-
-    if not content:
-        return ["No food data"]
-
     foods = []
 
-    # 抓正文 p + li
-    for tag in content.find_all(["p", "li"]):
+    # =========================
+    # 1. DBpedia（核心）
+    # =========================
+    endpoint = "https://dbpedia.org/sparql"
 
-        text = clean_text(tag.get_text(" ", strip=True))
+    query = f"""
+    SELECT DISTINCT ?foodLabel WHERE {{
+      ?country rdfs:label "{country}"@en.
+      ?country dbo:cuisine ?food.
+      ?food rdfs:label ?foodLabel.
+      FILTER (lang(?foodLabel) = "en")
+    }}
+    LIMIT 10
+    """
 
-        low = text.lower()
+    try:
+        r = requests.get(
+            endpoint,
+            params={"query": query, "format": "json"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10
+        )
 
-        # 过滤无关内容
-        bad_words = [
-            "main page", "edit", "wikipedia",
-            "help", "talk", "portal",
-            "citation", "isbn", "retrieved"
-        ]
+        data = r.json()
 
-        if any(b in low for b in bad_words):
-            continue
+        for item in data["results"]["bindings"]:
+            foods.append(item["foodLabel"]["value"])
 
-        if 15 < len(text) < 200:
-            foods.append(text)
+    except:
+        pass
 
-    # 去重
-    foods = list(dict.fromkeys(foods))
-
-    # fallback
+    # =========================
+    # 2. fallback Wikipedia
+    # =========================
     if not foods:
 
-        for p in content.find_all("p"):
-            text = clean_text(p.get_text())
-            if "food" in text.lower() or "cuisine" in text.lower():
-                foods.append(text)
+        url = f"https://en.wikipedia.org/wiki/{country.replace(' ', '_')}"
+        try:
+            r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+            soup = BeautifulSoup(r.text, "html.parser")
 
-    return foods[:12] if foods else ["No food data"]
+            content = soup.find("div", class_="mw-parser-output")
+
+            if content:
+                for p in content.find_all("p"):
+                    text = clean_text(p.get_text())
+
+                    if any(k in text.lower() for k in ["cuisine", "food", "dish"]):
+                        if len(text) > 30:
+                            foods.append(text)
+
+        except:
+            pass
+
+    # =========================
+    # 3. still empty fallback
+    # =========================
+    if not foods:
+        foods = ["Cuisine data not available"]
+
+    return foods[:10]
 
 
 # =========================
-# CLIMATE
+# CLIMATE（稳定）
 # =========================
 def get_climate_info(country):
 
@@ -186,11 +169,7 @@ def get_climate_info(country):
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    keywords = [
-        "climate", "temperature", "rainfall",
-        "weather", "season", "winter",
-        "summer", "storm", "snow"
-    ]
+    keywords = ["climate", "weather", "temperature", "rainfall", "season"]
 
     result = ""
 
@@ -216,7 +195,6 @@ def country_page(country):
 <html>
 <head>
 <meta charset="utf-8">
-
 <style>
 body {{
     font-family: Arial;
@@ -238,7 +216,6 @@ body {{
     background: white;
 }}
 </style>
-
 </head>
 
 <body>
@@ -255,19 +232,13 @@ body {{
 """
 
     for city in cities:
-
-        city_key = city.lower().strip()
-
         html += f"<div class='city'><h4>{city}</h4>"
-
-        for item in get_cost(city_key):
+        for item in get_cost(city):
             html += f"<p>{item['item']} : {item['price']}</p>"
-
         html += "</div>"
 
     html += """
 </div>
-
 </body>
 </html>
 """
@@ -287,24 +258,23 @@ def food_page(country):
 <html>
 <head>
 <meta charset="utf-8">
-
 <style>
 html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
     font-family: Arial;
-    background: transparent;
 }
 
 body {
-    padding: 6px;
+    padding: 8px;
 }
 
 .item {
     padding: 10px;
     margin-bottom: 6px;
     border-left: 3px solid #e67e22;
+    background: #fafafa;
 }
 </style>
 
@@ -320,7 +290,6 @@ setTimeout(sendHeight, 300);
 </script>
 
 </head>
-
 <body>
 """
 
@@ -343,28 +312,25 @@ def climate_page(country):
 
     climate = get_climate_info(country)
 
-    html = f"""
+    return f"""
 <html>
 <head>
 <meta charset="utf-8">
-
 <style>
 html, body {{
     margin: 0;
     padding: 0;
     overflow: hidden;
     font-family: Arial;
-    background: transparent;
 }}
 
 body {{
-    padding: 6px;
+    padding: 8px;
 }}
 
 .item {{
     padding: 10px;
     border-left: 3px solid #3498db;
-    line-height: 1.6;
 }}
 </style>
 
@@ -378,20 +344,15 @@ function sendHeight() {{
 window.onload = sendHeight;
 setTimeout(sendHeight, 300);
 </script>
-
 </head>
 
 <body>
-
 <div class="item">
 {climate.replace(chr(10), "<br>")}
 </div>
-
 </body>
 </html>
 """
-
-    return html
 
 
 # =========================

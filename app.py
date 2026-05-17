@@ -89,21 +89,7 @@ def get_cost(city):
 # =========================
 def get_foods(country):
 
-    cuisine_map = {
-        "china": "Cuisine_of_China",
-        "japan": "Japanese_cuisine",
-        "united states": "American_cuisine",
-        "united kingdom": "British_cuisine",
-        "canada": "Canadian_cuisine",
-        "australia": "Australian_cuisine"
-    }
-
-    key = country.lower().strip()
-
-    page = cuisine_map.get(key, f"Cuisine_of_{country.title()}")
-
-    url = f"https://en.wikipedia.org/wiki/{page}"
-
+    url = f"https://en.wikipedia.org/wiki/{country.replace(' ', '_')}_(cuisine)"
     headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
@@ -118,25 +104,60 @@ def get_foods(country):
 
     foods = []
 
+    # =========================
+    # 1. Infobox（最干净数据）
+    # =========================
+    infobox = soup.find("table", {"class": "infobox"})
+
+    if infobox:
+        for li in infobox.find_all("li"):
+            text = clean_text(li.get_text(" ", strip=True))
+            if 2 < len(text) < 50:
+                foods.append(text)
+
+    # =========================
+    # 2. 页面列表（核心）
+    # =========================
     for li in soup.find_all("li"):
 
         text = clean_text(li.get_text(" ", strip=True))
 
-        if len(text) < 3 or len(text) > 50:
+        if not text:
             continue
 
-        bad = ["ISBN", "Retrieved", "citation", "edit", "archive"]
+        # 过滤无关内容
+        bad = [
+            "ISBN",
+            "Retrieved",
+            "citation",
+            "edit",
+            "archived",
+            "listen",
+            "coordinates"
+        ]
 
         if any(b.lower() in text.lower() for b in bad):
             continue
 
-        foods.append(text)
+        # 只保留“像菜名”的
+        if 2 < len(text) < 60:
 
+            # 排除明显不是食物的
+            if not any(x in text.lower() for x in [
+                "file",
+                "category",
+                "wikimedia",
+                "help",
+                "portal"
+            ]):
+                foods.append(text)
+
+    # =========================
+    # 3. 去重
+    # =========================
     foods = list(dict.fromkeys(foods))
 
-    return foods[:15] if foods else ["No food data"]
-
-
+    return foods[:12] if foods else ["No food data"]
 # =========================
 # Climate
 # =========================

@@ -7,16 +7,11 @@ import re
 app = Flask(__name__)
 
 # =========================
-# ⭐ 超强清理（彻底去除所有 [xxx]）
+# 清理 Wikipedia 引用 [1] [a] [citation needed]
 # =========================
 def clean_text(text):
-
-    # 删除所有 [xxx]（数字/字母/句子全部支持）
     text = re.sub(r"\[[^\]]*\]", "", text)
-
-    # 删除多余空格
     text = re.sub(r"\s+", " ", text)
-
     return text.strip()
 
 
@@ -58,24 +53,32 @@ def get_country_info(country):
 
 
 # =========================
-# 城市（稳定）
+# 城市（修复 USA / US / UK 问题）
 # =========================
 def get_cities(country):
 
-    data = {
+    key = country.lower().strip()
+
+    key_map = {
         "china": ["Beijing", "Shanghai", "Guangzhou", "Shenzhen"],
         "japan": ["Tokyo", "Osaka", "Kyoto", "Yokohama"],
+
         "united states": ["New York", "Los Angeles", "Chicago", "Houston"],
+        "usa": ["New York", "Los Angeles", "Chicago", "Houston"],
+        "us": ["New York", "Los Angeles", "Chicago", "Houston"],
+
         "united kingdom": ["London", "Manchester", "Birmingham", "Liverpool"],
+        "uk": ["London", "Manchester", "Birmingham", "Liverpool"],
+
         "canada": ["Toronto", "Vancouver", "Montreal", "Calgary"],
         "australia": ["Sydney", "Melbourne", "Brisbane", "Perth"]
     }
 
-    return data.get(country.lower().strip(), [])
+    return key_map.get(key, [])
 
 
 # =========================
-# 物价（稳定）
+# 物价
 # =========================
 def get_cost(city):
 
@@ -120,15 +123,13 @@ def get_cost(city):
 
 
 # =========================
-# FOOD（DBpedia + fallback）
+# FOOD（稳定版）
 # =========================
 def get_foods(country):
 
     foods = []
 
-    # -------------------------
-    # DBpedia（主数据源）
-    # -------------------------
+    # DBpedia
     endpoint = "https://dbpedia.org/sparql"
 
     query = f"""
@@ -157,9 +158,7 @@ def get_foods(country):
     except:
         pass
 
-    # -------------------------
     # Wikipedia fallback
-    # -------------------------
     if not foods:
 
         url = f"https://en.wikipedia.org/wiki/{country.replace(' ', '_')}"
@@ -173,7 +172,6 @@ def get_foods(country):
             if content:
                 for p in content.find_all("p"):
                     text = clean_text(p.get_text())
-
                     if any(k in text.lower() for k in ["cuisine", "food", "dish"]):
                         if len(text) > 30:
                             foods.append(text)
@@ -181,9 +179,6 @@ def get_foods(country):
         except:
             pass
 
-    # -------------------------
-    # final fallback
-    # -------------------------
     if not foods:
         foods = ["Cuisine data not available"]
 
@@ -211,7 +206,6 @@ def get_climate_info(country):
 
     for p in soup.find_all("p"):
         text = clean_text(p.get_text())
-
         if any(k in text.lower() for k in keywords):
             result += text + "\n\n"
 
@@ -231,21 +225,18 @@ def country_page(country):
 <html>
 <head>
 <meta charset="utf-8">
-
 <style>
 body {{
     font-family: Arial;
     padding: 20px;
     background: #f5f5f5;
 }}
-
 .box {{
     background: white;
     padding: 15px;
     margin-top: 15px;
     border-radius: 10px;
 }}
-
 .city {{
     padding: 10px;
     margin-top: 10px;
@@ -254,7 +245,6 @@ body {{
 }}
 </style>
 </head>
-
 <body>
 
 <h1>{info['name']}</h1>
@@ -269,12 +259,9 @@ body {{
 """
 
     for city in cities:
-
         html += f"<div class='city'><h4>{city}</h4>"
-
-        for item in get_cost(city.lower()):
+        for item in get_cost(city):
             html += f"<p>{item['item']} : {item['price']}</p>"
-
         html += "</div>"
 
     html += """
@@ -287,7 +274,7 @@ body {{
 
 
 # =========================
-# FOOD iframe page
+# FOOD iframe
 # =========================
 @app.route("/food/<country>")
 def food_page(country):
@@ -298,7 +285,6 @@ def food_page(country):
 <html>
 <head>
 <meta charset="utf-8">
-
 <style>
 html, body {
     margin: 0;
@@ -306,11 +292,9 @@ html, body {
     overflow: hidden;
     font-family: Arial;
 }
-
 body {
     padding: 8px;
 }
-
 .item {
     padding: 10px;
     margin-bottom: 6px;
@@ -331,7 +315,6 @@ setTimeout(sendHeight, 300);
 </script>
 
 </head>
-
 <body>
 """
 
@@ -347,7 +330,7 @@ setTimeout(sendHeight, 300);
 
 
 # =========================
-# CLIMATE iframe page
+# CLIMATE iframe
 # =========================
 @app.route("/climate/<country>")
 def climate_page(country):
@@ -358,7 +341,6 @@ def climate_page(country):
 <html>
 <head>
 <meta charset="utf-8">
-
 <style>
 html, body {{
     margin: 0;
@@ -366,11 +348,9 @@ html, body {{
     overflow: hidden;
     font-family: Arial;
 }}
-
 body {{
     padding: 8px;
 }}
-
 .item {{
     padding: 10px;
     border-left: 3px solid #3498db;
@@ -389,7 +369,6 @@ setTimeout(sendHeight, 300);
 </script>
 
 </head>
-
 <body>
 
 <div class="item">
@@ -399,11 +378,3 @@ setTimeout(sendHeight, 300);
 </body>
 </html>
 """
-
-
-# =========================
-# RUN
-# =========================
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)

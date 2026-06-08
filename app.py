@@ -490,7 +490,6 @@ def country_page(country):
 # FOOD iframe
 # =========================
 @app.route("/food/<country>")
-@app.route("/food/<country>")
 def food_page(country):
 
     foods = get_foods(country)
@@ -515,7 +514,6 @@ def food_page(country):
 # =========================
 # CLIMATE iframe
 # =========================
-@app.route("/climate/<country>")
 @app.route("/climate/<country>")
 def climate_page(country):
 

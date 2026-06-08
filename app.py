@@ -375,10 +375,10 @@ def get_climate_info(country):
             result.append(text)
 
     return (
-        "\n\n".join(result)[:3000]
+        "\n\n".join(result)
         if result
         else "No climate info"
-    )
+)
 
 
 # =========================

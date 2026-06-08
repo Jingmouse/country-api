@@ -331,7 +331,7 @@ def get_foods(country):
 
         "us": ["Burger", "Hot Dog", "Fried Chicken", "Mac and Cheese", "Apple Pie"],
 
-        "united states": ["Burger", "Hot Dog", "Fried Chicken", "Mac and Cheese", "Apple Pie"],
+        "united states of america": ["Burger", "Hot Dog", "Fried Chicken", "Mac and Cheese", "Apple Pie"],
 
         "canada": ["Poutine", "Maple Syrup Pancakes", "Butter Tarts", "Nanaimo Bar", "Tourtière"],
 

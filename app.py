@@ -533,18 +533,45 @@ def food_page(country):
 # CLIMATE iframe
 # =========================
 @app.route("/climate/<country>")
+@app.route("/climate/<country>")
 def climate_page(country):
 
     climate = get_climate_info(country)
 
-    return f"""
+    html = f"""
     <html>
-    <body style="font-family:Arial;padding:10px;">
-    {climate.replace(chr(10), "<br>")}
+    <head>
+    <meta charset="utf-8">
+    <style>
+        html, body {{
+            margin: 0;
+            padding: 0;
+            height: auto;
+        }}
+
+        body {{
+            font-family: Arial;
+            padding: 12px;
+        }}
+
+        .container {{
+            width: 100%;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }}
+    </style>
+    </head>
+
+    <body>
+        <div class="container">
+            {climate}
+        </div>
     </body>
     </html>
     """
 
+    return html
 
 # =========================
 # Render

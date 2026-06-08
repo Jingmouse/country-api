@@ -40,6 +40,8 @@ def fetch_wiki(country):
 # =========================
 # 国家简介
 # =========================
+
+
 def get_country_info(country):
 
     soup = fetch_wiki(country)
@@ -140,9 +142,8 @@ CITY_MAP = {
 
 
 def get_cities(country):
-    return CITY_MAP.get(
-        country.lower().strip(),
-        []
+    country = normalize_country(country)
+    return CITY_MAP.get(country, [])
     )
 
 
@@ -316,7 +317,7 @@ def get_cost(city):
 # FOOD
 # =========================
 def get_foods(country):
-
+    country = normalize_country(country)
     country = country.lower().strip()
 
     FOOD_MAP = {
@@ -375,6 +376,8 @@ def get_climate_info(country):
 # =========================
 @app.route("/api/country/<country>")
 def api_country(country):
+
+    country = normalize_country(country)
 
     info = get_country_info(country)
 

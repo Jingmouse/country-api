@@ -324,22 +324,14 @@ def get_foods(country):
 
     foods = []
 
-    keywords = ["cuisine", "food", "dish", "meal", "eat"]
-
     for p in soup.find_all("p"):
 
         text = clean_text(p.get_text())
 
-        if any(k in text.lower() for k in keywords):
+        if len(text) > 30:
+            foods.append(text)
 
-            if len(text) > 30:
-
-                if len(text) > 500:
-                    text = text[:500] + "..."
-
-                foods.append(text)
-
-        if len(foods) >= 5:
+        if len(foods) >= 8:
             break
 
     return foods if foods else ["Cuisine data not available"]
@@ -355,31 +347,22 @@ def get_climate_info(country):
     if not soup:
         return "Unavailable"
 
-    keywords = [
-        "climate",
-        "weather",
-        "temperature",
-        "rainfall",
-        "season"
-    ]
-
     result = []
 
     for p in soup.find_all("p"):
 
         text = clean_text(p.get_text())
 
-        if any(k in text.lower() for k in keywords):
+        if len(text) > 50:
             result.append(text)
 
-    climate = "\n\n".join(result)
+        if len(result) >= 8:
+            break
 
-    # 限制长度
-    return (
-        climate[:800] + "..."
-        if len(climate) > 800
-        else climate
-) if climate else "No climate info"
+    if not result:
+        return "No climate info available"
+
+    return "\n\n".join(result)
 
 
 # =========================

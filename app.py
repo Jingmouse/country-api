@@ -317,25 +317,30 @@ def get_cost(city):
 # =========================
 def get_foods(country):
 
-    soup = fetch_wiki(country)
+    country = country.lower().strip()
 
-    if not soup:
-        return ["Cuisine data not available"]
+    FOOD_MAP = {
 
-    foods = []
+        "china": ["Dumplings", "Peking Duck", "Hot Pot", "Baozi", "Fried Rice"],
 
-    for p in soup.find_all("p"):
+        "japan": ["Sushi", "Ramen", "Tempura", "Udon", "Okonomiyaki"],
 
-        text = clean_text(p.get_text())
+        "australia": ["Meat Pie", "Vegemite Toast", "Barbecue", "Fish and Chips", "Lamington"],
 
-        if len(text) > 30:
-            foods.append(text)
+        "usa": ["Burger", "Hot Dog", "Fried Chicken", "Mac and Cheese", "Apple Pie"],
 
-        if len(foods) >= 8:
-            break
+        "us": ["Burger", "Hot Dog", "Fried Chicken", "Mac and Cheese", "Apple Pie"],
 
-    return foods if foods else ["Cuisine data not available"]
+        "united states": ["Burger", "Hot Dog", "Fried Chicken", "Mac and Cheese", "Apple Pie"],
 
+        "canada": ["Poutine", "Maple Syrup Pancakes", "Butter Tarts", "Nanaimo Bar", "Tourtière"],
+
+        "uk": ["Fish and Chips", "Full English Breakfast", "Shepherd’s Pie", "Bangers and Mash", "Sunday Roast"],
+
+        "united kingdom": ["Fish and Chips", "Full English Breakfast", "Shepherd’s Pie", "Bangers and Mash", "Sunday Roast"]
+    }
+
+    return FOOD_MAP.get(country, ["No data available"])
 
 # =========================
 # CLIMATE

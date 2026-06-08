@@ -51,7 +51,6 @@ def get_country_info(country):
         }
 
     title = soup.find("h1")
-
     name = title.text.strip() if title else country
 
     intro = "No introduction found."
@@ -70,8 +69,6 @@ def get_country_info(country):
         "name": name,
         "intro": intro
     }
-
-
 # =========================
 # 城市
 # =========================
@@ -327,23 +324,22 @@ def get_foods(country):
 
     foods = []
 
+    keywords = ["cuisine", "food", "dish", "meal", "eat"]
+
     for p in soup.find_all("p"):
 
         text = clean_text(p.get_text())
 
-        if any(
-            k in text.lower()
-            for k in ["cuisine", "food", "dish"]
-        ):
+        if any(k in text.lower() for k in keywords):
 
-            if len(text) > 50:
+            if len(text) > 30:
 
                 if len(text) > 500:
                     text = text[:500] + "..."
 
                 foods.append(text)
 
-        if len(foods) >= 3:
+        if len(foods) >= 5:
             break
 
     return foods if foods else ["Cuisine data not available"]
@@ -511,25 +507,27 @@ def country_page(country):
 # FOOD iframe
 # =========================
 @app.route("/food/<country>")
+@app.route("/food/<country>")
 def food_page(country):
 
     foods = get_foods(country)
 
     html = """
     <html>
-    <body style="font-family:Arial;padding:10px;">
+    <body style="font-family:Arial;padding:10px;overflow:auto;">
+    <div style="max-height:100vh;">
     """
 
     for food in foods:
         html += f"<p>{food}</p>"
 
     html += """
+    </div>
     </body>
     </html>
     """
 
     return html
-
 
 # =========================
 # CLIMATE iframe

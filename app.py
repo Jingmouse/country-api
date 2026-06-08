@@ -43,11 +43,13 @@ def fetch_wiki(country):
 def get_country_info(country):
 
     soup = fetch_wiki(country)
+
     if not soup:
-       return {
-        "name": country,
-        "intro": "Unavailable"
-       }
+        return {
+            "name": country,
+            "intro": "Unavailable"
+        }
+
     title = soup.find("h1")
 
     name = title.text.strip() if title else country

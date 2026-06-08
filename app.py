@@ -10,10 +10,29 @@ app = Flask(__name__)
 # =========================
 # 工具函数
 # =========================
+# =========================
+# 工具函数
+# =========================
 def clean_text(text):
     text = re.sub(r"\[[^\]]*\]", "", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
+
+
+def normalize_country(country):
+    country = country.lower().strip()
+
+    mapping = {
+        "usa": "usa",
+        "us": "usa",
+        "united states": "usa",
+        "united states of america": "usa",
+
+        "uk": "uk",
+        "united kingdom": "uk"
+    }
+
+    return mapping.get(country, country)
 
 
 # =========================

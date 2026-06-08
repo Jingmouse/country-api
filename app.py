@@ -44,12 +44,12 @@ def get_country_info(country):
 
     soup = fetch_wiki(country)
 
-    if not soup:
-        return {
-            "name": country,
-            "intro": "Unavailable"
-        }
-
+   if not soup:
+    return {
+        "name": country,
+        "intro": "Unavailable"
+    }
+}
     title = soup.find("h1")
 
     name = title.text.strip() if title else country
@@ -329,17 +329,24 @@ def get_foods(country):
 
     for p in soup.find_all("p"):
 
-        text = clean_text(
-            p.get_text()
-        )
+        text = clean_text(p.get_text())
 
         if any(
             k in text.lower()
             for k in ["cuisine", "food", "dish"]
         ):
-            foods.append(text)
 
-    return foods[:8] if foods else ["Cuisine data not available"]
+            if len(text) > 50:
+
+                if len(text) > 500:
+                    text = text[:500] + "..."
+
+                foods.append(text)
+
+        if len(foods) >= 3:
+            break
+
+    return foods if foods else ["Cuisine data not available"]
 
 
 # =========================
@@ -364,21 +371,19 @@ def get_climate_info(country):
 
     for p in soup.find_all("p"):
 
-        text = clean_text(
-            p.get_text()
-        )
+        text = clean_text(p.get_text())
 
-        if any(
-            k in text.lower()
-            for k in keywords
-        ):
+        if any(k in text.lower() for k in keywords):
             result.append(text)
 
+    climate = "\n\n".join(result)
+
+    # 限制长度
     return (
-        "\n\n".join(result)
-        if result
-        else "No climate info"
-)
+        climate[:800] + "..."
+        if len(climate) > 800
+        else climate
+) if climate else "No climate info"
 
 
 # =========================
@@ -518,7 +523,10 @@ def food_page(country):
     for food in foods:
         html += f"<p>{food}</p>"
 
-    html += "</body></html>"
+    html += """
+    </body>
+    </html>
+    """
 
     return html
 

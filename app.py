@@ -163,8 +163,6 @@ CITY_MAP = {
 def get_cities(country):
     country = normalize_country(country)
     return CITY_MAP.get(country, [])
-    )
-
 
 # =========================
 # 物价数据库
